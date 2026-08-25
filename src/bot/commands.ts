@@ -11,11 +11,6 @@ export const commandBuilders = [
         .setRequired(true)
         .setMinLength(2)
         .setMaxLength(1_000),
-    )
-    .addBooleanOption((option) =>
-      option
-        .setName("private")
-        .setDescription("나에게만 답변을 표시합니다 (기본값: 예)"),
     ),
   new SlashCommandBuilder()
     .setName("reset")

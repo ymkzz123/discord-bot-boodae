@@ -43,7 +43,10 @@ export class WebSearchService {
       tool_choice: "required",
       include: ["web_search_call.action.sources"],
       store: true,
-      max_output_tokens: 2_500,
+      max_output_tokens: 6_000,
+      ...(this.model.startsWith("gpt-5")
+        ? { reasoning: { effort: "low" as const } }
+        : {}),
       ...(options.previousResponseId
         ? { previous_response_id: options.previousResponseId }
         : {}),

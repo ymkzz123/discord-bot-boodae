@@ -6,6 +6,10 @@ import {
 
 import { splitDiscordMessage, truncateWithNotice } from "../lib/discord-message.js";
 import { serializeError, type Logger } from "../lib/logger.js";
+import {
+  getSearchFailureMessage,
+  isInvalidPreviousResponseError,
+} from "../openai/search-error.js";
 import type { WebSearchService } from "../openai/web-search-service.js";
 import type { FixedWindowRateLimiter } from "../security/rate-limiter.js";
 import type { ConversationStore } from "../state/conversation-store.js";
@@ -43,7 +47,6 @@ async function handleSearch(
   dependencies: InteractionDependencies,
 ): Promise<void> {
   const query = interaction.options.getString("query", true).trim();
-  const isPrivate = interaction.options.getBoolean("private") ?? true;
   const limit = dependencies.rateLimiter.consume(interaction.user.id);
 
   if (!limit.allowed) {
@@ -55,18 +58,30 @@ async function handleSearch(
     return;
   }
 
-  await interaction.deferReply({
-    ...(isPrivate ? { flags: MessageFlags.Ephemeral } : {}),
-  });
+  await interaction.deferReply();
 
   const key = conversationKey(interaction);
   const previousResponseId = dependencies.conversations.get(key);
   const startedAt = Date.now();
 
   try {
-    const answer = await dependencies.searchService.search(query, {
-      ...(previousResponseId ? { previousResponseId } : {}),
-    });
+    let answer;
+
+    try {
+      answer = await dependencies.searchService.search(query, {
+        ...(previousResponseId ? { previousResponseId } : {}),
+      });
+    } catch (error) {
+      if (!previousResponseId || !isInvalidPreviousResponseError(error)) throw error;
+
+      dependencies.conversations.delete(key);
+      dependencies.logger.warn("Discarding invalid conversation state and retrying search", {
+        userId: interaction.user.id,
+        guildId: interaction.guildId,
+        ...serializeError(error),
+      });
+      answer = await dependencies.searchService.search(query);
+    }
 
     dependencies.conversations.set(key, answer.responseId);
 
@@ -83,7 +98,6 @@ async function handleSearch(
       await interaction.followUp({
         content: chunk,
         allowedMentions: { parse: [] },
-        ...(isPrivate ? { flags: MessageFlags.Ephemeral } : {}),
       });
     }
 
@@ -95,6 +109,7 @@ async function handleSearch(
       continuedConversation: Boolean(previousResponseId),
     });
   } catch (error) {
+    dependencies.conversations.delete(key);
     dependencies.logger.error("Search failed", {
       userId: interaction.user.id,
       guildId: interaction.guildId,
@@ -103,8 +118,7 @@ async function handleSearch(
     });
 
     await interaction.editReply({
-      content:
-        "검색 중 문제가 발생했습니다. 잠시 뒤 다시 시도해 주세요. 계속 실패하면 봇 운영자에게 로그 확인을 요청해 주세요.",
+      content: getSearchFailureMessage(error),
       allowedMentions: { parse: [] },
     });
   }
