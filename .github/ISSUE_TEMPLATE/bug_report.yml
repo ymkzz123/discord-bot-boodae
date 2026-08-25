@@ -1,0 +1,24 @@
+name: 버그 보고
+description: 재현 가능한 문제를 알려주세요.
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: 문제 설명
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 재현 순서
+      placeholder: "1. /search 실행\n2. ..."
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: 관련 로그
+      description: 토큰과 API 키는 반드시 제거하세요.
+      render: shell
