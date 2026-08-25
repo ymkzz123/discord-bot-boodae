@@ -1,31 +1,47 @@
-# Discord 설정 가이드
+# Discord 서버 설치 가이드
+
+이 프로젝트는 Discord Gateway에 연결되는 봇입니다. 정상 사용하려면 다음 세 가지가 모두 필요합니다.
+
+1. Discord Developer Portal의 애플리케이션과 봇 토큰
+2. 대상 서버에 봇을 설치하는 OAuth2 승인
+3. 봇 프로세스의 지속적인 실행
+
+`https://discord.gg/...` 형식은 일반 사용자를 서버에 초대하는 링크입니다. 봇 계정은 이 링크를 열거나 수락할 수 없으며 OAuth2 설치 링크를 사용해야 합니다.
 
 ## 1. 애플리케이션과 봇 만들기
 
 1. [Discord Developer Portal](https://discord.com/developers/applications)을 엽니다.
-2. **New Application**으로 애플리케이션을 만듭니다.
-3. **General Information**의 **Application ID**를 `.env`의 `DISCORD_CLIENT_ID`에 넣습니다.
-4. **Bot** 메뉴에서 봇을 생성하고 토큰을 발급합니다.
-5. 토큰을 `.env`의 `DISCORD_TOKEN`에 넣습니다.
+2. **New Application**을 눌러 애플리케이션을 만듭니다.
+3. **General Information**에서 **Application ID**를 복사합니다.
+4. **Bot** 메뉴를 열어 봇 사용자가 있는지 확인합니다.
+5. **Reset Token**으로 봇 토큰을 발급합니다.
 
-토큰은 비밀번호와 같습니다. 채팅, 스크린샷, 커밋, 로그에 붙여 넣지 마세요. 노출되었다면 Developer Portal에서 즉시 재발급해야 합니다.
+토큰은 비밀번호와 같습니다. 채팅, 스크린샷, Issue, 커밋, 로그에 붙여 넣지 마세요. 노출되었다면 Developer Portal에서 즉시 재발급해야 합니다.
 
-이 프로젝트는 슬래시 명령만 사용하므로 **Message Content Intent**를 켤 필요가 없습니다.
+이 프로젝트는 슬래시 명령만 사용하므로 **Message Content Intent**, **Server Members Intent**, **Presence Intent**를 켤 필요가 없습니다.
 
-## 2. 개발 서버 ID 준비
+## 2. 서버 설치 설정
 
-Discord 앱의 사용자 설정에서 **고급 > 개발자 모드**를 켠 뒤, 테스트할 서버를 우클릭하여 **서버 ID 복사**를 선택합니다. 이 값을 `.env`의 `DISCORD_GUILD_ID`에 넣으면 슬래시 명령 변경이 개발 서버에 빠르게 반영됩니다.
+Developer Portal의 **Installation** 메뉴에서 다음을 확인합니다.
 
-## 3. 봇을 서버에 초대하기
+- Installation Contexts: **Guild Install** 활성화
+- Install Link: **Discord Provided Link**
+- Guild Install Scopes: `applications.commands`, `bot`
+- Bot Permissions: `View Channels`, `Send Messages`, `Send Messages in Threads`
 
-Developer Portal의 **OAuth2 > URL Generator**에서 다음을 선택합니다.
+관리자 권한은 요청하지 않습니다. 특정 채널에서 응답하지 못한다면 서버의 채널 권한에서 봇 역할에 `View Channel`과 `Send Messages`가 허용되어 있는지 확인하세요.
 
-- Scopes: `bot`, `applications.commands`
-- Bot Permissions: `Send Messages`, `Embed Links`, `Read Message History`
+## 3. 대상 서버 ID 복사
 
-생성된 URL을 열어 본인이 관리하거나 초대 권한이 있는 테스트 서버를 선택합니다. 관리자 권한은 필요하지 않습니다.
+봇을 설치하려는 Discord 서버에 본인 계정으로 먼저 들어가 있어야 합니다. 또한 그 서버에서 **서버 관리(Manage Server)** 권한이 있어야 앱을 설치할 수 있습니다.
 
-## 4. 환경 변수 작성
+1. Discord 사용자 설정의 **고급 > 개발자 모드**를 켭니다.
+2. 대상 서버 아이콘을 우클릭합니다.
+3. **서버 ID 복사**를 선택합니다.
+
+서버 초대 코드와 서버 ID는 서로 다른 값입니다. `.env`에는 숫자로 된 서버 ID를 입력합니다.
+
+## 4. 환경 변수 설정
 
 ```bash
 cp .env.example .env
@@ -34,22 +50,32 @@ cp .env.example .env
 ```dotenv
 DISCORD_CLIENT_ID=숫자로_된_Application_ID
 DISCORD_TOKEN=발급받은_봇_토큰
-DISCORD_GUILD_ID=개발_서버_ID
+DISCORD_GUILD_ID=숫자로_된_대상_서버_ID
 OPENAI_API_KEY=OpenAI_API_키
 OPENAI_MODEL=gpt-5.5
 ```
 
-Codespaces에서는 장기적으로 `.env` 파일보다 Codespaces Secrets를 사용하는 편이 안전합니다. Secrets 이름을 위 환경 변수와 동일하게 만들면 됩니다.
+Codespaces에서는 장기적으로 `.env` 파일보다 Codespaces Secrets를 사용하는 편이 안전합니다. Secret 이름을 위 환경 변수 이름과 동일하게 지정하세요. 토큰이나 API 키를 이 저장소에 커밋하면 안 됩니다.
 
-## 5. 명령 등록과 실행
+## 5. 봇 설치 링크 생성
 
 ```bash
 npm install
+npm run invite:url
+```
+
+출력된 `https://discord.com/oauth2/authorize?...` URL을 브라우저에서 엽니다. `DISCORD_GUILD_ID`를 입력했다면 대상 서버가 미리 선택되고 다른 서버로 변경할 수 없습니다.
+
+Discord 승인 화면에서 권한을 확인하고 **승인**합니다. 설치할 서버가 목록에 없다면 현재 Discord 계정에 그 서버의 **서버 관리** 권한이 없는 것입니다.
+
+## 6. 슬래시 명령 등록과 실행
+
+```bash
 npm run commands:register
 npm run dev
 ```
 
-봇 로그에 `Discord bot is ready`가 표시된 뒤 Discord에서 다음을 시험합니다.
+로그에 `Discord bot is ready`가 표시된 뒤 대상 서버에서 시험합니다.
 
 ```text
 /ping
@@ -58,17 +84,34 @@ npm run dev
 /reset
 ```
 
+`DISCORD_GUILD_ID`가 설정되어 있으면 명령은 해당 서버에 바로 등록됩니다. 비워 두면 전역 명령이 되어 Discord 전체에 전파되는 데 시간이 걸릴 수 있습니다.
+
+## 7. 계속 온라인으로 유지하기
+
+`npm run dev`가 실행 중인 터미널을 닫거나 Codespace가 중지되면 봇도 오프라인이 됩니다. 테스트할 때는 Codespace를 켜 둬도 되지만, 상시 운영할 때는 Docker를 실행할 수 있는 지속형 서버에 배포해야 합니다.
+
+```bash
+docker compose up --build -d
+docker compose logs -f bot
+```
+
 ## 자주 생기는 문제
 
 ### 슬래시 명령이 보이지 않음
 
-- 개발 중에는 `DISCORD_GUILD_ID`를 설정했는지 확인합니다.
+- `DISCORD_GUILD_ID`가 올바른 숫자 서버 ID인지 확인합니다.
 - `npm run commands:register`를 다시 실행합니다.
-- 봇 초대 시 `applications.commands` scope가 포함됐는지 확인합니다.
+- 설치 scope에 `applications.commands`가 포함됐는지 확인합니다.
+
+### 봇이 오프라인으로 표시됨
+
+- `npm run dev`가 계속 실행 중인지 확인합니다.
+- 로그에 `Discord bot is ready`가 있는지 확인합니다.
+- `DISCORD_TOKEN`이 최근 재발급된 토큰과 같은지 확인합니다.
 
 ### `Used disallowed intents` 오류
 
-Developer Portal의 privileged intent와 코드가 어긋날 때 발생합니다. 이 프로젝트는 `Guilds` intent만 사용하므로 코드를 변경하지 않았다면 privileged intent를 모두 꺼도 됩니다.
+이 프로젝트는 `Guilds` intent만 사용합니다. 코드를 변경하지 않았다면 Developer Portal의 privileged intent를 모두 꺼도 됩니다.
 
 ### `401` 또는 `Invalid Token`
 

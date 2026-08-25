@@ -57,11 +57,16 @@ cp .env.example .env
 `.env`에 값을 입력한 뒤 개발 서버에 명령을 등록합니다.
 
 ```bash
+npm run invite:url
 npm run commands:register
 npm run dev
 ```
 
-Discord Developer Portal에서 앱을 만드는 정확한 순서는 [Discord 설정 가이드](docs/SETUP_DISCORD.md)를 확인하세요.
+첫 번째 명령이 출력한 OAuth2 URL을 브라우저에서 열고 **서버에 추가**를 선택하세요. 일반 `discord.gg/...` 링크는 사람용 서버 초대 링크이므로 봇 설치에는 사용할 수 없습니다.
+
+Discord Developer Portal에서 앱을 만들고 특정 서버에 설치하는 정확한 순서는 [Discord 설정 가이드](docs/SETUP_DISCORD.md)를 확인하세요.
+
+> `npm run dev` 또는 배포된 프로세스가 계속 실행 중이어야 봇이 온라인 상태를 유지합니다. Codespace가 중지되면 봇도 오프라인이 됩니다.
 
 ## 환경 변수
 
