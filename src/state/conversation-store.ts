@@ -1,5 +1,7 @@
+import type { ConversationTurn } from "../search/types.js";
+
 interface ConversationEntry {
-  responseId: string;
+  turn: ConversationTurn;
   expiresAt: number;
 }
 
@@ -11,7 +13,7 @@ export class ConversationStore {
     private readonly now: () => number = Date.now,
   ) {}
 
-  get(key: string): string | undefined {
+  get(key: string): ConversationTurn | undefined {
     const entry = this.#entries.get(key);
     if (!entry) return undefined;
 
@@ -20,12 +22,12 @@ export class ConversationStore {
       return undefined;
     }
 
-    return entry.responseId;
+    return entry.turn;
   }
 
-  set(key: string, responseId: string): void {
+  set(key: string, turn: ConversationTurn): void {
     this.#entries.set(key, {
-      responseId,
+      turn,
       expiresAt: this.now() + this.ttlMs,
     });
   }

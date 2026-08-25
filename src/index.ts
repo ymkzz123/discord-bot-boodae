@@ -1,7 +1,9 @@
 import { loadRuntimeConfig } from "./config/env.js";
 import { createBot } from "./bot/create-bot.js";
+import { GeminiAnswerGenerator } from "./gemini/gemini-answer-generator.js";
 import { createLogger } from "./lib/logger.js";
-import { WebSearchService } from "./openai/web-search-service.js";
+import { DuckDuckGoSearchProvider } from "./search/duckduckgo-search-provider.js";
+import { WebSearchService } from "./search/web-search-service.js";
 import { FixedWindowRateLimiter } from "./security/rate-limiter.js";
 import { ConversationStore } from "./state/conversation-store.js";
 
@@ -13,10 +15,16 @@ const rateLimiter = new FixedWindowRateLimiter(
   config.rateLimitRequests,
   config.rateLimitWindowMs,
 );
-const searchService = new WebSearchService(
-  config.openAiApiKey,
-  config.openAiModel,
+const searchProvider = new DuckDuckGoSearchProvider(config.searchTimeoutMs);
+const answerGenerator = new GeminiAnswerGenerator(
+  config.geminiApiKey,
+  config.geminiModel,
   config.searchTimeoutMs,
+);
+const searchService = new WebSearchService(
+  searchProvider,
+  answerGenerator,
+  config.searchMaxResults,
 );
 
 const bot = createBot(

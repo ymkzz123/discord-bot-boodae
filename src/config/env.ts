@@ -14,9 +14,10 @@ const sharedSchema = discordIdentitySchema.extend({
 });
 
 const runtimeSchema = sharedSchema.extend({
-  OPENAI_API_KEY: z.string().min(20, "OPENAI_API_KEY is missing or too short"),
-  OPENAI_MODEL: z.string().min(1).default("gpt-5.5"),
+  GEMINI_API_KEY: z.string().min(20, "GEMINI_API_KEY is missing or too short"),
+  GEMINI_MODEL: z.string().min(1).default("gemini-3.1-flash-lite"),
   SEARCH_TIMEOUT_MS: z.coerce.number().int().min(5_000).max(120_000).default(60_000),
+  SEARCH_MAX_RESULTS: z.coerce.number().int().min(1).max(10).default(5),
   CONVERSATION_TTL_MINUTES: z.coerce.number().int().min(1).max(1_440).default(30),
   RATE_LIMIT_REQUESTS: z.coerce.number().int().min(1).max(100).default(5),
   RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().int().min(1).max(3_600).default(60),
@@ -39,9 +40,10 @@ export function loadRuntimeConfig() {
     discordClientId: env.DISCORD_CLIENT_ID,
     discordToken: env.DISCORD_TOKEN,
     discordGuildId: normalizeGuildId(env.DISCORD_GUILD_ID),
-    openAiApiKey: env.OPENAI_API_KEY,
-    openAiModel: env.OPENAI_MODEL,
+    geminiApiKey: env.GEMINI_API_KEY,
+    geminiModel: env.GEMINI_MODEL,
     searchTimeoutMs: env.SEARCH_TIMEOUT_MS,
+    searchMaxResults: env.SEARCH_MAX_RESULTS,
     conversationTtlMs: env.CONVERSATION_TTL_MINUTES * 60_000,
     rateLimitRequests: env.RATE_LIMIT_REQUESTS,
     rateLimitWindowMs: env.RATE_LIMIT_WINDOW_SECONDS * 1_000,

@@ -2,35 +2,45 @@
 
 ## 설계 목표
 
-- 검색 MVP는 작게 유지하되, 음악·일정·게임 정보 같은 기능을 독립 모듈로 추가할 수 있어야 합니다.
-- Discord 이벤트 코드가 OpenAI SDK 세부 구현에 직접 묶이지 않게 합니다.
-- 사용자의 일반 메시지를 수집하지 않고 명시적인 슬래시 명령만 처리합니다.
-- 웹 출처는 Discord에서 클릭 가능한 형태로 보입니다.
+- Discord 코드는 Gemini나 특정 검색 사이트의 세부 구현을 알지 않습니다.
+- 웹 검색과 Jungol 문제·태그 검색을 같은 공급자 계약으로 확장합니다.
+- 테트리오·체스 등 참고 저장소의 게임 기능과 대규모 단일 파일 구조는 가져오지 않습니다.
+- 실제로 수집한 URL만 공개 답변의 출처 목록에 표시합니다.
 
 ## 요청 흐름
 
-1. `discord.js`가 `/search` interaction을 받습니다.
-2. 사용자별 고정 윈도우 속도 제한을 확인합니다.
-3. 3초 내 Discord 응답 제한을 피하기 위해 먼저 defer합니다.
-4. `WebSearchService`가 Responses API를 `web_search` 도구와 함께 호출합니다.
-5. URL citation annotation을 Markdown 링크와 출처 목록으로 변환합니다.
-6. Discord 2,000자 제한에 맞춰 여러 메시지로 나눕니다.
-7. response ID를 사용자·채널 기준으로 잠시 저장해 후속 검색에 사용합니다.
+1. `discord.js`가 `/search` interaction을 받고 사용자 속도 제한을 확인합니다.
+2. `WebSearchService`가 선택된 `SearchProvider`에 구조화된 결과를 요청합니다.
+3. 현재 `DuckDuckGoSearchProvider`가 제목, URL, 검색 요약을 수집합니다.
+4. `GeminiAnswerGenerator`가 결과만 근거로 답변하고 `[1]` 형식의 출처 번호를 붙입니다.
+5. 서비스가 실제 URL 목록을 답변 끝에 추가하고 Discord 길이에 맞춰 나눕니다.
+6. 마지막 질문과 답변을 사용자·채널별로 30분 보관해 후속 질문에 사용합니다.
 
-## 모듈 경계
+```mermaid
+flowchart LR
+    D[Discord handler] --> S[SearchService]
+    S --> P[SearchProvider]
+    S --> A[AnswerGenerator]
+    P --> W[DuckDuckGo]
+    P -. 향후 구현 .-> J[Jungol]
+    A --> G[Gemini]
+```
 
-| 모듈 | 책임 | 교체 시점 |
-|---|---|---|
-| `bot` | Discord 입력/출력과 명령 라우팅 | Discord UI가 바뀔 때 |
-| `openai` | 검색 요청과 citation 처리 | 모델 제공자/검색 전략이 바뀔 때 |
-| `state` | 후속 대화 식별자 보관 | 다중 인스턴스로 확장할 때 |
-| `security` | 남용 방지 | Redis 기반 분산 제한이 필요할 때 |
-| `config` | 시작 전 환경 검증 | 배포 환경이 추가될 때 |
+## 핵심 계약
 
-## 상태와 개인정보
+- `SearchProvider`: 질문을 받아 `title`, `url`, `snippet` 목록을 반환합니다.
+- `AnswerGenerator`: 질문과 검색 결과를 받아 근거가 표시된 Markdown 답변을 반환합니다.
+- `SearchService`: 두 계약을 조정하고 빈 결과·출처 목록을 일관되게 처리합니다.
 
-메모리에는 질문 원문이 아니라 OpenAI response ID와 만료 시각만 보관합니다. 기본 TTL은 30분이며 프로세스가 재시작되면 사라집니다. Responses API 요청에는 `store: true`가 사용되므로 운영 전에 조직의 데이터 정책과 OpenAI 프로젝트 설정을 확인하세요.
+따라서 Jungol 기능은 `JungolSearchProvider`를 추가한 뒤 새 `/jungol` 명령에서 선택하면 됩니다. 태그 정규화, 페이지네이션, 난이도 필터는 공급자 내부의 도메인 로직으로 두고 Discord handler에는 넣지 않습니다.
 
-## 확장 패턴
+## 보안과 개인정보
 
-새 기능은 `src/integrations` 아래 서비스로 추가하고, Discord handler에는 얇은 조정 코드만 둡니다. DB가 필요해지면 현재 클래스의 호출부를 유지하는 `ConversationStore` 인터페이스를 도입한 뒤 Redis 구현으로 바꾸는 것이 첫 확장 단계입니다.
+- Gemini 키는 `x-goog-api-key` 헤더로만 전송하고 로그에 남기지 않습니다.
+- 웹 결과는 신뢰할 수 없는 데이터로 취급하며 프롬프트 명령으로 따르지 않습니다.
+- 메모리에는 마지막 질문과 답변 및 만료 시각만 저장하고 재시작 시 삭제됩니다.
+- Message Content privileged intent를 쓰지 않고 사용자가 실행한 슬래시 명령만 처리합니다.
+
+## 현재 한계
+
+DuckDuckGo HTML 결과 수집은 무료이며 별도 검색 키가 필요 없지만 공식 검색 API 계약이 아닙니다. HTML 구조나 정책이 바뀌면 공급자만 교체해야 합니다. 프로덕션 규모에서는 공식 검색 API와 캐시를 사용하는 것이 안전합니다.
