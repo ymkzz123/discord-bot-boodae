@@ -80,9 +80,11 @@ npm run dev
 ```text
 /ping
 /search query:오늘 주요 AI 뉴스를 출처와 함께 알려줘
-/search query:그중 가장 중요한 변화는 뭐야? private:true
+/search query:그중 가장 중요한 변화는 뭐야?
 /reset
 ```
+
+`/search` 결과는 채널에 공개됩니다. 명령 정의가 Discord에 반영되도록 코드를 업데이트한 뒤 `npm run commands:register`를 다시 실행하세요.
 
 `DISCORD_GUILD_ID`가 설정되어 있으면 명령은 해당 서버에 바로 등록됩니다. 비워 두면 전역 명령이 되어 Discord 전체에 전파되는 데 시간이 걸릴 수 있습니다.
 
@@ -122,3 +124,5 @@ docker compose logs -f bot
 - `OPENAI_API_KEY`가 올바른지 확인합니다.
 - API 프로젝트의 사용 한도와 모델 접근 권한을 확인합니다.
 - 일시적 오류는 SDK가 두 번까지 재시도합니다.
+- Discord에 표시된 `SEARCH_AUTH`, `SEARCH_QUOTA`, `SEARCH_MODEL`, `SEARCH_TIMEOUT` 등의 안전한 오류 코드를 기준으로 설정을 점검합니다.
+- 정확한 원인은 봇을 실행한 터미널에서 `Search failed` 로그를 확인합니다. API 키나 Discord 토큰은 공유하지 마세요.

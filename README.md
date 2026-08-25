@@ -9,8 +9,7 @@ Discord 안에서 최신 웹 정보를 검색하고, 클릭 가능한 출처와 
 
 ## 현재 기능
 
-- `/search query:<질문>`: OpenAI Responses API의 내장 `web_search`로 검색
-- `/search ... private:false`: 채널에 공개 답변
+- `/search query:<질문>`: OpenAI Responses API의 내장 `web_search`로 검색하고 채널에 공개 답변
 - `/reset`: 현재 사용자·채널의 30분 후속 대화 문맥 초기화
 - `/ping`: Gateway 연결 상태 확인
 - 답변의 URL citation을 Discord에서 클릭 가능한 링크로 변환
@@ -91,6 +90,8 @@ Discord Developer Portal에서 앱을 만들고 특정 서버에 설치하는 �
 - 비워 두면 전역 명령으로 등록합니다. 여러 서버에서 쓸 수 있지만 Discord 전파에 시간이 걸릴 수 있습니다.
 
 명령 정의를 바꾼 뒤에는 `npm run commands:register`를 다시 실행해야 합니다.
+
+`/search` 답변은 기본적으로 채널에 공개되므로 같은 채널의 다른 사용자도 검색 결과와 출처를 볼 수 있습니다.
 
 ## 품질 확인
 
