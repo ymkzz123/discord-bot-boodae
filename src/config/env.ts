@@ -4,10 +4,13 @@ import { z } from "zod";
 
 const snowflake = z.string().regex(/^\d+$/, "Discord ID must contain digits only");
 
-const sharedSchema = z.object({
+const discordIdentitySchema = z.object({
   DISCORD_CLIENT_ID: snowflake,
-  DISCORD_TOKEN: z.string().min(20, "DISCORD_TOKEN is missing or too short"),
   DISCORD_GUILD_ID: z.union([snowflake, z.literal("")]).optional(),
+});
+
+const sharedSchema = discordIdentitySchema.extend({
+  DISCORD_TOKEN: z.string().min(20, "DISCORD_TOKEN is missing or too short"),
 });
 
 const runtimeSchema = sharedSchema.extend({
@@ -23,6 +26,7 @@ const runtimeSchema = sharedSchema.extend({
 
 export type RuntimeConfig = ReturnType<typeof loadRuntimeConfig>;
 export type RegistrationConfig = ReturnType<typeof loadRegistrationConfig>;
+export type InviteConfig = ReturnType<typeof loadInviteConfig>;
 
 function normalizeGuildId(value: string | undefined): string | undefined {
   return value?.trim() || undefined;
@@ -52,6 +56,15 @@ export function loadRegistrationConfig() {
   return {
     discordClientId: env.DISCORD_CLIENT_ID,
     discordToken: env.DISCORD_TOKEN,
+    discordGuildId: normalizeGuildId(env.DISCORD_GUILD_ID),
+  };
+}
+
+export function loadInviteConfig() {
+  const env = discordIdentitySchema.parse(process.env);
+
+  return {
+    discordClientId: env.DISCORD_CLIENT_ID,
     discordGuildId: normalizeGuildId(env.DISCORD_GUILD_ID),
   };
 }

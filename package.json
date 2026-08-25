@@ -12,6 +12,7 @@
     "check": "npm run typecheck && npm run test",
     "commands:register": "tsx scripts/register-commands.ts",
     "dev": "tsx watch src/index.ts",
+    "invite:url": "tsx scripts/create-invite-url.ts",
     "start": "node --enable-source-maps dist/index.js",
     "test": "vitest run",
     "test:watch": "vitest",
