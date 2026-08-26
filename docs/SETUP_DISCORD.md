@@ -51,8 +51,8 @@ cp .env.example .env
 DISCORD_CLIENT_ID=숫자로_된_Application_ID
 DISCORD_TOKEN=발급받은_봇_토큰
 DISCORD_GUILD_ID=숫자로_된_대상_서버_ID
-OPENAI_API_KEY=OpenAI_API_키
-OPENAI_MODEL=gpt-5.5
+GEMINI_API_KEY=Google_AI_Studio에서_발급한_키
+GEMINI_MODEL=gemini-3.1-flash-lite
 ```
 
 Codespaces에서는 장기적으로 `.env` 파일보다 Codespaces Secrets를 사용하는 편이 안전합니다. Secret 이름을 위 환경 변수 이름과 동일하게 지정하세요. 토큰이나 API 키를 이 저장소에 커밋하면 안 됩니다.
@@ -119,10 +119,10 @@ docker compose logs -f bot
 
 `.env`의 `DISCORD_TOKEN` 앞뒤 공백과 토큰 재발급 여부를 확인합니다. 토큰을 로그에 출력하지 마세요.
 
-### OpenAI 검색 오류
+### Gemini 또는 웹 검색 오류
 
-- `OPENAI_API_KEY`가 올바른지 확인합니다.
-- API 프로젝트의 사용 한도와 모델 접근 권한을 확인합니다.
-- 일시적 오류는 SDK가 두 번까지 재시도합니다.
+- `GEMINI_API_KEY`가 올바른지, Google AI Studio에서 선택한 프로젝트의 키인지 확인합니다.
+- 무료 티어의 요청 한도와 `GEMINI_MODEL`의 사용 가능 여부를 확인합니다.
+- `SEARCH_PROVIDER`는 DuckDuckGo에서 결과를 가져오지 못한 경우이므로 잠시 뒤 다시 시도합니다.
 - Discord에 표시된 `SEARCH_AUTH`, `SEARCH_QUOTA`, `SEARCH_MODEL`, `SEARCH_TIMEOUT` 등의 안전한 오류 코드를 기준으로 설정을 점검합니다.
 - 정확한 원인은 봇을 실행한 터미널에서 `Search failed` 로그를 확인합니다. API 키나 Discord 토큰은 공유하지 마세요.

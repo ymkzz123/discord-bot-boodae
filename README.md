@@ -3,16 +3,16 @@
 ![Node.js](https://img.shields.io/badge/Node.js-22%2B-339933?logo=nodedotjs&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
 ![Discord](https://img.shields.io/badge/Discord-slash_commands-5865F2?logo=discord&logoColor=white)
-![OpenAI](https://img.shields.io/badge/OpenAI-Responses_API-000000?logo=openai&logoColor=white)
+![Gemini](https://img.shields.io/badge/Gemini-API-8E75B2?logo=googlegemini&logoColor=white)
 
 Discord 안에서 최신 웹 정보를 검색하고, 클릭 가능한 출처와 함께 답변하는 봇입니다. 현재는 작고 안전한 검색 MVP에 집중하며, 기능이 늘어나도 핵심 로직을 교체하지 않고 모듈을 추가할 수 있도록 구성했습니다.
 
 ## 현재 기능
 
-- `/search query:<질문>`: OpenAI Responses API의 내장 `web_search`로 검색하고 채널에 공개 답변
+- `/search query:<질문>`: DuckDuckGo에서 결과를 수집하고 Gemini가 출처 번호와 함께 요약
 - `/reset`: 현재 사용자·채널의 30분 후속 대화 문맥 초기화
 - `/ping`: Gateway 연결 상태 확인
-- 답변의 URL citation을 Discord에서 클릭 가능한 링크로 변환
+- 검색에 실제 사용한 URL을 Discord에서 클릭 가능한 출처 목록으로 표시
 - Discord 2,000자 제한에 맞춘 자동 분할
 - 사용자별 기본 5회/분 속도 제한
 - 불필요한 Message Content privileged intent 미사용
@@ -24,8 +24,9 @@ Discord 안에서 최신 웹 정보를 검색하고, 클릭 가능한 출처와 
 |---|---|---|
 | 언어 | TypeScript (strict) | 기능 확장 시 인터페이스와 오류를 일찍 발견 |
 | Discord | discord.js v14 | 슬래시 명령과 Gateway 생태계가 안정적 |
-| 검색/답변 | OpenAI Responses API + `web_search` | 검색 실행, 종합, 출처 정보를 한 API 흐름으로 처리 |
-| 상태 | 메모리 기반 response ID 저장 | MVP에서 DB 없이 후속 질문 지원 |
+| 검색 수집 | `SearchProvider` + DuckDuckGo HTML | API 키 없이 검색하고 향후 Jungol 공급자를 독립적으로 추가 |
+| 답변 생성 | Gemini REST API | 무료 티어 모델로 검색 결과를 간결하게 요약 |
+| 상태 | 메모리 기반 이전 질문·답변 저장 | MVP에서 DB 없이 후속 질문 지원 |
 | 검증 | Zod | 시작 시 환경 변수 오류를 명확히 표시 |
 | 테스트 | Vitest | 순수 로직을 빠르게 단위 테스트 |
 
@@ -36,17 +37,17 @@ flowchart TD
     U["Discord 사용자"] --> C["/search 명령"]
     C --> G["discord.js Gateway"]
     G --> L{"속도 제한"}
-    L -->|허용| O["OpenAI Responses API"]
-    O --> W["web_search"]
-    W --> O
-    O --> F["인용 링크 변환·메시지 분할"]
+    L -->|허용| P["SearchProvider"]
+    P --> D["DuckDuckGo 결과 수집"]
+    D --> M["Gemini 요약"]
+    M --> F["출처 목록·메시지 분할"]
     F --> U
-    O -. response ID .-> S["30분 대화 상태"]
+    M -. 이전 질문·답변 .-> S["30분 대화 상태"]
 ```
 
 ## 빠른 시작
 
-요구 사항: Node.js 22 이상, Discord 애플리케이션, OpenAI API 키.
+요구 사항: Node.js 22 이상, Discord 애플리케이션, Google AI Studio의 Gemini API 키.
 
 ```bash
 npm install
@@ -74,10 +75,11 @@ Discord Developer Portal에서 앱을 만들고 특정 서버에 설치하는 �
 | `DISCORD_CLIENT_ID` | 예 | - | Discord Application ID |
 | `DISCORD_TOKEN` | 예 | - | Discord Bot Token |
 | `DISCORD_GUILD_ID` | 아니요 | 빈 값 | 개발 서버 ID. 입력하면 명령이 즉시 반영됨 |
-| `OPENAI_API_KEY` | 예 | - | OpenAI Platform API 키 |
-| `OPENAI_MODEL` | 아니요 | `gpt-5.5` | 웹 검색에 사용할 모델 |
-| `SEARCH_TIMEOUT_MS` | 아니요 | `60000` | 검색 API 타임아웃 |
-| `CONVERSATION_TTL_MINUTES` | 아니요 | `30` | 후속 질문 response ID 보관 시간 |
+| `GEMINI_API_KEY` | 예 | - | Google AI Studio에서 발급한 Gemini API 키 |
+| `GEMINI_MODEL` | 아니요 | `gemini-3.1-flash-lite` | 검색 결과를 요약할 모델 |
+| `SEARCH_TIMEOUT_MS` | 아니요 | `60000` | 각 외부 요청의 타임아웃 |
+| `SEARCH_MAX_RESULTS` | 아니요 | `5` | Gemini에 전달할 검색 결과 수(최대 10) |
+| `CONVERSATION_TTL_MINUTES` | 아니요 | `30` | 후속 질문 문맥 보관 시간 |
 | `RATE_LIMIT_REQUESTS` | 아니요 | `5` | 한 윈도우의 사용자별 요청 수 |
 | `RATE_LIMIT_WINDOW_SECONDS` | 아니요 | `60` | 속도 제한 윈도우 |
 | `MAX_RESPONSE_CHARS` | 아니요 | `10000` | 답변 전체 최대 길이 |
@@ -113,10 +115,11 @@ docker compose logs -f bot
 src/
 ├── bot/          # Discord 명령, 이벤트, 응답 흐름
 ├── config/       # 환경 변수 검증
+├── gemini/       # Gemini 답변 생성기
 ├── lib/          # 로깅과 Discord 메시지 처리
-├── openai/       # 웹 검색과 citation 변환
+├── search/       # 공급자 인터페이스, 웹 결과 수집, 출처 처리
 ├── security/     # 사용자별 속도 제한
-├── state/        # 후속 대화 response ID 보관
+├── state/        # 짧은 후속 대화 문맥 보관
 └── index.ts      # 의존성 조립과 프로세스 시작
 scripts/          # Discord 명령 등록 스크립트
 tests/            # 순수 로직 단위 테스트
@@ -128,8 +131,8 @@ docs/             # 설정, 아키텍처, 로드맵
 기능을 무작정 한 파일에 추가하지 말고 다음 경계를 유지합니다.
 
 1. 새 Discord 명령은 `src/bot/commands.ts`에 정의
-2. 외부 서비스 연동은 별도 `src/integrations/<service>` 모듈로 구현
-3. 명령 처리기는 서비스 인터페이스만 호출
+2. 새 검색 대상은 `SearchProvider`를 구현 (`JungolSearchProvider` 등)
+3. 답변 모델을 바꿀 때는 `AnswerGenerator`를 구현
 4. 영속 상태가 필요해지면 `ConversationStore`를 Redis/PostgreSQL 구현으로 교체
 5. 사용자 수가 늘면 큐, 분산 속도 제한, 관측성을 차례로 추가
 
@@ -137,10 +140,15 @@ docs/             # 설정, 아키텍처, 로드맵
 
 ## 공식 참고 자료
 
-- [OpenAI Web search 가이드](https://developers.openai.com/api/docs/guides/tools-web-search)
+- [Gemini API 키 가이드](https://ai.google.dev/gemini-api/docs/api-key)
+- [Gemini 텍스트 생성 가이드](https://ai.google.dev/gemini-api/docs/text-generation)
 - [Discord Developer Portal](https://discord.com/developers/applications)
 - [discord.js 가이드](https://guide.discordjs.dev/)
 
 ## 보안
 
 취약점 신고와 토큰 유출 대응은 [SECURITY.md](SECURITY.md)를 확인하세요.
+
+## 검색 공급자 주의사항
+
+현재 웹 결과 수집은 `kannyan` 저장소의 “외부 검색 결과와 LLM 요약을 분리”하는 접근을 참고해 DuckDuckGo HTML 엔드포인트를 사용합니다. 공식 유료 검색 API가 아니므로 응답 형식이나 접근 정책이 바뀌면 동작하지 않을 수 있습니다. 이 경우 `SearchProvider` 구현만 Brave Search, Bing 등의 공식 API로 교체할 수 있습니다. Gemini에는 검색 결과의 제목·URL·요약만 전달하며, Gemini의 유료 Google Search grounding은 사용하지 않습니다.

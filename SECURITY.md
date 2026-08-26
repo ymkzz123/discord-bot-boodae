@@ -2,7 +2,7 @@
 
 ## 비밀 정보
 
-- Discord bot token과 OpenAI API key는 `.env` 또는 배포 환경의 Secret 기능에만 저장합니다.
+- Discord bot token과 Gemini API key는 `.env` 또는 배포 환경의 Secret 기능에만 저장합니다.
 - 토큰, API 키, 사용자 질문 원문을 로그에 기록하지 않습니다.
 - PR, Issue, 스크린샷에 토큰이 노출되면 해당 메시지만 지우는 것으로 끝내지 말고 토큰을 즉시 재발급합니다.
 

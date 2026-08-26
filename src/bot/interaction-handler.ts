@@ -6,16 +6,13 @@ import {
 
 import { splitDiscordMessage, truncateWithNotice } from "../lib/discord-message.js";
 import { serializeError, type Logger } from "../lib/logger.js";
-import {
-  getSearchFailureMessage,
-  isInvalidPreviousResponseError,
-} from "../openai/search-error.js";
-import type { WebSearchService } from "../openai/web-search-service.js";
+import { getSearchFailureMessage } from "../search/search-error.js";
+import type { SearchService } from "../search/types.js";
 import type { FixedWindowRateLimiter } from "../security/rate-limiter.js";
 import type { ConversationStore } from "../state/conversation-store.js";
 
 export interface InteractionDependencies {
-  searchService: WebSearchService;
+  searchService: SearchService;
   conversations: ConversationStore;
   rateLimiter: FixedWindowRateLimiter;
   logger: Logger;
@@ -61,29 +58,15 @@ async function handleSearch(
   await interaction.deferReply();
 
   const key = conversationKey(interaction);
-  const previousResponseId = dependencies.conversations.get(key);
+  const previousTurn = dependencies.conversations.get(key);
   const startedAt = Date.now();
 
   try {
-    let answer;
+    const answer = await dependencies.searchService.search(query, {
+      ...(previousTurn ? { previousTurn } : {}),
+    });
 
-    try {
-      answer = await dependencies.searchService.search(query, {
-        ...(previousResponseId ? { previousResponseId } : {}),
-      });
-    } catch (error) {
-      if (!previousResponseId || !isInvalidPreviousResponseError(error)) throw error;
-
-      dependencies.conversations.delete(key);
-      dependencies.logger.warn("Discarding invalid conversation state and retrying search", {
-        userId: interaction.user.id,
-        guildId: interaction.guildId,
-        ...serializeError(error),
-      });
-      answer = await dependencies.searchService.search(query);
-    }
-
-    dependencies.conversations.set(key, answer.responseId);
+    dependencies.conversations.set(key, { query, answer: answer.markdown });
 
     const content = truncateWithNotice(answer.markdown, dependencies.maxResponseChars);
     const chunks = splitDiscordMessage(content);
@@ -106,7 +89,7 @@ async function handleSearch(
       guildId: interaction.guildId,
       sourceCount: answer.sourceCount,
       durationMs: Date.now() - startedAt,
-      continuedConversation: Boolean(previousResponseId),
+      continuedConversation: Boolean(previousTurn),
     });
   } catch (error) {
     dependencies.conversations.delete(key);

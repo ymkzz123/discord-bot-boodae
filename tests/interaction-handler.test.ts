@@ -26,7 +26,6 @@ describe("search interaction", () => {
     const dependencies = {
       searchService: {
         search: vi.fn().mockResolvedValue({
-          responseId: "response-1",
           markdown: "공개 검색 결과",
           sourceCount: 1,
         }),
@@ -55,5 +54,9 @@ describe("search interaction", () => {
       content: "공개 검색 결과",
       allowedMentions: { parse: [] },
     });
+    expect(dependencies.conversations.set).toHaveBeenCalledWith(
+      "guild-1:channel-1:user-1",
+      { query: "오늘의 AI 뉴스", answer: "공개 검색 결과" },
+    );
   });
 });
