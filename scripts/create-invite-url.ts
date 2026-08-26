@@ -3,9 +3,7 @@ import { loadInviteConfig } from "../src/config/env.js";
 
 const config = loadInviteConfig();
 
-console.log(
-  buildBotInviteUrl({
-    clientId: config.discordClientId,
-    ...(config.discordGuildId ? { guildId: config.discordGuildId } : {}),
-  }),
-);
+for (const guildId of config.discordAllowedGuildIds) {
+  console.log(`Guild ${guildId}:`);
+  console.log(buildBotInviteUrl({ clientId: config.discordClientId, guildId }));
+}

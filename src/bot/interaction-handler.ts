@@ -6,13 +6,13 @@ import {
 
 import { splitDiscordMessage, truncateWithNotice } from "../lib/discord-message.js";
 import { serializeError, type Logger } from "../lib/logger.js";
-import { formatKboLineupAnswer } from "../kbo/format-lineup.js";
 import { getKboFailureMessage } from "../kbo/kbo-error.js";
 import type { KboLineupServiceContract } from "../kbo/types.js";
 import { getSearchFailureMessage } from "../search/search-error.js";
 import type { SearchService } from "../search/types.js";
 import type { FixedWindowRateLimiter } from "../security/rate-limiter.js";
 import type { ConversationStore } from "../state/conversation-store.js";
+import { buildKboLineupEmbeds } from "./kbo-lineup-embeds.js";
 
 export interface InteractionDependencies {
   searchService: SearchService;
@@ -21,7 +21,7 @@ export interface InteractionDependencies {
   rateLimiter: FixedWindowRateLimiter;
   logger: Logger;
   maxResponseChars: number;
-  allowedGuildId: string;
+  allowedGuildIds: ReadonlySet<string>;
 }
 
 async function sendPublicChunks(
@@ -141,11 +141,10 @@ async function handleLineup(
 
   try {
     const answer = await dependencies.kboLineupService.getToday(query);
-    await sendPublicChunks(
-      interaction,
-      formatKboLineupAnswer(answer),
-      dependencies.maxResponseChars,
-    );
+    await interaction.editReply({
+      embeds: buildKboLineupEmbeds(answer),
+      allowedMentions: { parse: [] },
+    });
     dependencies.logger.info("KBO lineup completed", {
       userId: interaction.user.id,
       guildId: interaction.guildId,
@@ -171,7 +170,7 @@ export function createInteractionHandler(dependencies: InteractionDependencies) 
   return async (interaction: Interaction): Promise<void> => {
     if (!interaction.isChatInputCommand()) return;
 
-    if (interaction.guildId !== dependencies.allowedGuildId) {
+    if (!interaction.guildId || !dependencies.allowedGuildIds.has(interaction.guildId)) {
       dependencies.logger.warn("Blocked interaction outside the allowed guild", {
         userId: interaction.user.id,
         guildId: interaction.guildId,

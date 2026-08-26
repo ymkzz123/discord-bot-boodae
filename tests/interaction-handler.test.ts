@@ -45,7 +45,7 @@ describe("search interaction", () => {
         error: vi.fn(),
       },
       maxResponseChars: 10_000,
-      allowedGuildId: "guild-1",
+      allowedGuildIds: new Set(["guild-1", "guild-2"]),
     } as unknown as InteractionDependencies;
 
     await createInteractionHandler(dependencies)(interaction);
@@ -104,15 +104,21 @@ describe("search interaction", () => {
       rateLimiter: { consume: vi.fn().mockReturnValue({ allowed: true }) },
       logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
       maxResponseChars: 10_000,
-      allowedGuildId: "guild-1",
+      allowedGuildIds: new Set(["guild-1", "guild-2"]),
     } as unknown as InteractionDependencies;
 
     await createInteractionHandler(dependencies)(interaction);
 
     expect(deferReply).toHaveBeenCalledWith();
-    expect(editReply).toHaveBeenCalledWith({
-      content: expect.stringContaining("8월 27일 한화 vs SSG"),
-      allowedMentions: { parse: [] },
+    const response = editReply.mock.calls[0]?.[0];
+    expect(response.allowedMentions).toEqual({ parse: [] });
+    expect(response.embeds).toHaveLength(1);
+    expect(response.embeds[0].toJSON()).toMatchObject({
+      title: "한화 vs SSG",
+      fields: [
+        { name: "원정  |  한화 이글스", inline: false },
+        { name: "홈  |  SSG 랜더스", inline: false },
+      ],
     });
     expect(dependencies.kboLineupService.getToday).toHaveBeenCalledWith("한화");
   });
@@ -134,7 +140,7 @@ describe("search interaction", () => {
       rateLimiter: { consume: vi.fn() },
       logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
       maxResponseChars: 10_000,
-      allowedGuildId: "guild-1",
+      allowedGuildIds: new Set(["guild-1", "guild-2"]),
     } as unknown as InteractionDependencies;
 
     await createInteractionHandler(dependencies)(interaction);
@@ -149,5 +155,35 @@ describe("search interaction", () => {
       "Blocked interaction outside the allowed guild",
       { userId: "user-1", guildId: "unauthorized-guild" },
     );
+  });
+
+  it("accepts commands from every guild in the allowlist", async () => {
+    const reply = vi.fn().mockResolvedValue(undefined);
+    const interaction = {
+      isChatInputCommand: () => true,
+      commandName: "ping",
+      user: { id: "user-1" },
+      guildId: "guild-2",
+      channelId: "channel-1",
+      client: { ws: { ping: 21 } },
+      reply,
+    } as unknown as Interaction;
+    const dependencies = {
+      searchService: { search: vi.fn() },
+      kboLineupService: { getToday: vi.fn() },
+      conversations: { get: vi.fn(), set: vi.fn(), delete: vi.fn() },
+      rateLimiter: { consume: vi.fn() },
+      logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+      maxResponseChars: 10_000,
+      allowedGuildIds: new Set(["guild-1", "guild-2"]),
+    } as unknown as InteractionDependencies;
+
+    await createInteractionHandler(dependencies)(interaction);
+
+    expect(reply).toHaveBeenCalledWith({
+      content: "정상 작동 중입니다. (21ms)",
+      allowedMentions: { parse: [] },
+      flags: MessageFlags.Ephemeral,
+    });
   });
 });

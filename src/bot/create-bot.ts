@@ -11,7 +11,7 @@ export function createBot(
   const handleInteraction = createInteractionHandler(dependencies);
 
   async function leaveUnauthorizedGuild(guild: Guild): Promise<void> {
-    if (guild.id === dependencies.allowedGuildId) return;
+    if (dependencies.allowedGuildIds.has(guild.id)) return;
 
     logger.warn("Leaving unauthorized guild", {
       guildId: guild.id,
@@ -33,7 +33,7 @@ export function createBot(
     logger.info("Discord bot is ready", {
       botUser: readyClient.user.tag,
       guildCount: readyClient.guilds.cache.size,
-      allowedGuildId: dependencies.allowedGuildId,
+      allowedGuildIds: [...dependencies.allowedGuildIds],
     });
 
     for (const guild of readyClient.guilds.cache.values()) {

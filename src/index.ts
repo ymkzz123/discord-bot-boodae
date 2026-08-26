@@ -58,7 +58,7 @@ const bot = createBot(
     rateLimiter,
     logger,
     maxResponseChars: config.maxResponseChars,
-    allowedGuildId: config.discordGuildId,
+    allowedGuildIds: new Set(config.discordAllowedGuildIds),
   },
   logger,
 );
