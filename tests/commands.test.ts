@@ -7,5 +7,6 @@ describe("search command", () => {
     const search = commandPayload.find((command) => command.name === "search");
 
     expect(search?.options?.map((option) => option.name)).toEqual(["query"]);
+    expect(search?.description).toBe("웹을 검색해 자연스러운 말투로 답변합니다");
   });
 });

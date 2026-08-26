@@ -3,7 +3,7 @@ import { SlashCommandBuilder } from "discord.js";
 export const commandBuilders = [
   new SlashCommandBuilder()
     .setName("search")
-    .setDescription("웹을 검색하고 출처와 함께 답변합니다")
+    .setDescription("웹을 검색해 자연스러운 말투로 답변합니다")
     .addStringOption((option) =>
       option
         .setName("query")

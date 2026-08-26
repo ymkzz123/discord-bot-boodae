@@ -1,5 +1,4 @@
 import { SearchError } from "./search-error.js";
-import { appendSourceList } from "./sources.js";
 import type {
   AnswerGenerator,
   SearchAnswer,
@@ -24,7 +23,7 @@ export class WebSearchService implements SearchService {
     const answer = await this.answerGenerator.generate(query, results, options.previousTurn);
 
     return {
-      markdown: appendSourceList(answer, results),
+      markdown: answer,
       sourceCount: results.length,
     };
   }

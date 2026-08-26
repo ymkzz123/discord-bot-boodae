@@ -79,7 +79,7 @@ npm run dev
 
 ```text
 /ping
-/search query:오늘 주요 AI 뉴스를 출처와 함께 알려줘
+/search query:오늘 주요 AI 뉴스를 자연스럽게 정리해줘
 /search query:그중 가장 중요한 변화는 뭐야?
 /reset
 ```
