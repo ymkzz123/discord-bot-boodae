@@ -123,6 +123,6 @@ docker compose logs -f bot
 
 - `GEMINI_API_KEY`가 올바른지, Google AI Studio에서 선택한 프로젝트의 키인지 확인합니다.
 - 무료 티어의 요청 한도와 `GEMINI_MODEL`의 사용 가능 여부를 확인합니다.
-- `SEARCH_PROVIDER`는 DuckDuckGo에서 결과를 가져오지 못한 경우이므로 잠시 뒤 다시 시도합니다.
+- `SEARCH_PROVIDER`는 DuckDuckGo와 Naver 모두에서 결과를 가져오지 못한 경우이므로 잠시 뒤 다시 시도합니다.
 - Discord에 표시된 `SEARCH_AUTH`, `SEARCH_QUOTA`, `SEARCH_MODEL`, `SEARCH_TIMEOUT` 등의 안전한 오류 코드를 기준으로 설정을 점검합니다.
 - 정확한 원인은 봇을 실행한 터미널에서 `Search failed` 로그를 확인합니다. API 키나 Discord 토큰은 공유하지 마세요.

@@ -4,7 +4,7 @@
 
 - [x] `/search`, `/reset`, `/ping`
 - [x] 검색 수집과 답변 모델을 인터페이스로 분리
-- [x] DuckDuckGo 결과 + Gemini 요약
+- [x] DuckDuckGo 우선 검색 + Naver fallback + Gemini 요약
 - [x] 공개 답변과 클릭 가능한 실제 출처 목록
 - [x] Gemini·검색 공급자 오류 분류
 - [ ] 실제 Discord 개발 서버에서 end-to-end 확인

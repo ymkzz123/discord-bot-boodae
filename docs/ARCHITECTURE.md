@@ -11,10 +11,11 @@
 
 1. `discord.js`가 `/search` interaction을 받고 사용자 속도 제한을 확인합니다.
 2. `WebSearchService`가 선택된 `SearchProvider`에 구조화된 결과를 요청합니다.
-3. 현재 `DuckDuckGoSearchProvider`가 제목, URL, 검색 요약을 수집합니다.
-4. `GeminiAnswerGenerator`가 결과만 근거로 답변하고 `[1]` 형식의 출처 번호를 붙입니다.
-5. 서비스가 실제 URL 목록을 답변 끝에 추가하고 Discord 길이에 맞춰 나눕니다.
-6. 마지막 질문과 답변을 사용자·채널별로 30분 보관해 후속 질문에 사용합니다.
+3. 현재 `DuckDuckGoSearchProvider`가 브라우저형 GET 요청으로 제목, URL, 검색 요약을 수집합니다.
+4. DuckDuckGo 결과가 없거나 요청이 실패하면 같은 요청 제한 안에서 Naver HTML 검색을 시도합니다.
+5. `GeminiAnswerGenerator`가 결과만 근거로 답변하고 `[1]` 형식의 출처 번호를 붙입니다.
+6. 서비스가 실제 URL 목록을 답변 끝에 추가하고 Discord 길이에 맞춰 나눕니다.
+7. 마지막 질문과 답변을 사용자·채널별로 30분 보관해 후속 질문에 사용합니다.
 
 ```mermaid
 flowchart LR
@@ -22,6 +23,7 @@ flowchart LR
     S --> P[SearchProvider]
     S --> A[AnswerGenerator]
     P --> W[DuckDuckGo]
+    W -. 결과 없음 .-> N[Naver fallback]
     P -. 향후 구현 .-> J[Jungol]
     A --> G[Gemini]
 ```
@@ -43,4 +45,4 @@ flowchart LR
 
 ## 현재 한계
 
-DuckDuckGo HTML 결과 수집은 무료이며 별도 검색 키가 필요 없지만 공식 검색 API 계약이 아닙니다. HTML 구조나 정책이 바뀌면 공급자만 교체해야 합니다. 프로덕션 규모에서는 공식 검색 API와 캐시를 사용하는 것이 안전합니다.
+DuckDuckGo와 Naver HTML 결과 수집은 무료이며 별도 검색 키가 필요 없지만 공식 검색 API 계약이 아닙니다. HTML 구조나 정책이 바뀌면 공급자만 교체해야 합니다. 프로덕션 규모에서는 공식 검색 API와 캐시를 사용하는 것이 안전합니다.

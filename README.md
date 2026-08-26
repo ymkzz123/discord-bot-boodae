@@ -9,7 +9,7 @@ Discord 안에서 최신 웹 정보를 검색하고, 클릭 가능한 출처와 
 
 ## 현재 기능
 
-- `/search query:<질문>`: DuckDuckGo에서 결과를 수집하고 Gemini가 출처 번호와 함께 요약
+- `/search query:<질문>`: DuckDuckGo에서 결과를 수집하고, 결과가 없으면 Naver로 재검색한 뒤 Gemini가 출처 번호와 함께 요약
 - `/reset`: 현재 사용자·채널의 30분 후속 대화 문맥 초기화
 - `/ping`: Gateway 연결 상태 확인
 - 검색에 실제 사용한 URL을 Discord에서 클릭 가능한 출처 목록으로 표시
@@ -24,7 +24,7 @@ Discord 안에서 최신 웹 정보를 검색하고, 클릭 가능한 출처와 
 |---|---|---|
 | 언어 | TypeScript (strict) | 기능 확장 시 인터페이스와 오류를 일찍 발견 |
 | Discord | discord.js v14 | 슬래시 명령과 Gateway 생태계가 안정적 |
-| 검색 수집 | `SearchProvider` + DuckDuckGo HTML | API 키 없이 검색하고 향후 Jungol 공급자를 독립적으로 추가 |
+| 검색 수집 | `SearchProvider` + DuckDuckGo/Naver HTML | API 키 없이 순차 검색하고 향후 Jungol 공급자를 독립적으로 추가 |
 | 답변 생성 | Gemini REST API | 무료 티어 모델로 검색 결과를 간결하게 요약 |
 | 상태 | 메모리 기반 이전 질문·답변 저장 | MVP에서 DB 없이 후속 질문 지원 |
 | 검증 | Zod | 시작 시 환경 변수 오류를 명확히 표시 |
@@ -39,7 +39,9 @@ flowchart TD
     G --> L{"속도 제한"}
     L -->|허용| P["SearchProvider"]
     P --> D["DuckDuckGo 결과 수집"]
-    D --> M["Gemini 요약"]
+    D -->|결과 없음| N["Naver 대체 검색"]
+    D -->|결과 있음| M["Gemini 요약"]
+    N --> M
     M --> F["출처 목록·메시지 분할"]
     F --> U
     M -. 이전 질문·답변 .-> S["30분 대화 상태"]
@@ -151,4 +153,4 @@ docs/             # 설정, 아키텍처, 로드맵
 
 ## 검색 공급자 주의사항
 
-현재 웹 결과 수집은 `kannyan` 저장소의 “외부 검색 결과와 LLM 요약을 분리”하는 접근을 참고해 DuckDuckGo HTML 엔드포인트를 사용합니다. 공식 유료 검색 API가 아니므로 응답 형식이나 접근 정책이 바뀌면 동작하지 않을 수 있습니다. 이 경우 `SearchProvider` 구현만 Brave Search, Bing 등의 공식 API로 교체할 수 있습니다. Gemini에는 검색 결과의 제목·URL·요약만 전달하며, Gemini의 유료 Google Search grounding은 사용하지 않습니다.
+현재 웹 결과 수집은 `kannyan` 저장소의 “DuckDuckGo 우선 검색 후 Naver 대체 검색” 흐름을 참고합니다. 두 사이트 모두 HTML 응답 형식이나 접근 정책이 바뀌면 동작하지 않을 수 있습니다. 이 경우 `SearchProvider` 구현만 공식 검색 API로 교체할 수 있습니다. Gemini에는 검색 결과의 제목·URL·요약만 전달하며, Gemini의 유료 Google Search grounding은 사용하지 않습니다.
