@@ -5,14 +5,14 @@
 ![Discord](https://img.shields.io/badge/Discord-slash_commands-5865F2?logo=discord&logoColor=white)
 ![Gemini](https://img.shields.io/badge/Gemini-API-8E75B2?logo=googlegemini&logoColor=white)
 
-Discord 안에서 최신 웹 정보를 검색하고, 클릭 가능한 출처와 함께 답변하는 봇입니다. 현재는 작고 안전한 검색 MVP에 집중하며, 기능이 늘어나도 핵심 로직을 교체하지 않고 모듈을 추가할 수 있도록 구성했습니다.
+Discord 안에서 최신 웹 정보를 검색하고 사람이 직접 정리한 듯 자연스럽게 답변하는 봇입니다. 현재는 작고 안전한 검색 MVP에 집중하며, 기능이 늘어나도 핵심 로직을 교체하지 않고 모듈을 추가할 수 있도록 구성했습니다.
 
 ## 현재 기능
 
-- `/search query:<질문>`: DuckDuckGo → Naver → Bing 순서로 결과를 채우고 Gemini가 출처 번호와 함께 요약
+- `/search query:<질문>`: DuckDuckGo → Naver → Bing 순서로 결과를 채우고 Gemini가 자연스러운 문장으로 정리
 - `/reset`: 현재 사용자·채널의 30분 후속 대화 문맥 초기화
 - `/ping`: Gateway 연결 상태 확인
-- 검색에 실제 사용한 URL을 Discord에서 클릭 가능한 출처 목록으로 표시
+- 검색 자료와 URL은 답변 생성에만 사용하고 Discord 메시지에는 노출하지 않음
 - Discord 2,000자 제한에 맞춘 자동 분할
 - 사용자별 기본 5회/분 속도 제한
 - 불필요한 Message Content privileged intent 미사용
@@ -45,7 +45,7 @@ flowchart TD
     D --> M["Gemini 요약"]
     N --> M
     B --> M
-    M --> F["출처 목록·메시지 분할"]
+    M --> F["자연스러운 문체 정리·메시지 분할"]
     F --> U
     M -. 이전 질문·답변 .-> S["30분 대화 상태"]
 ```
@@ -98,7 +98,7 @@ Discord Developer Portal에서 앱을 만들고 특정 서버에 설치하는 �
 
 명령 정의를 바꾼 뒤에는 `npm run commands:register`를 다시 실행해야 합니다.
 
-`/search` 답변은 기본적으로 채널에 공개되므로 같은 채널의 다른 사용자도 검색 결과와 출처를 볼 수 있습니다.
+`/search` 답변은 기본적으로 채널에 공개되므로 같은 채널의 다른 사용자도 답변을 볼 수 있습니다. 검색에 사용한 URL과 출처 목록은 메시지에 표시하지 않습니다.
 
 ## 품질 확인
 
@@ -131,7 +131,7 @@ src/
 ├── gemini/       # Gemini 답변 생성기
 ├── lib/          # 로깅과 Discord 메시지 처리
 ├── scraping/     # 브라우저형 HTTP 클라이언트와 향후 사이트 스크래퍼 공통 계층
-├── search/       # 합성 공급자, 검색 엔진, 출처 처리
+├── search/       # 합성 공급자와 검색 엔진
 ├── security/     # 사용자별 속도 제한
 ├── state/        # 짧은 후속 대화 문맥 보관
 └── index.ts      # 의존성 조립과 프로세스 시작
@@ -165,4 +165,4 @@ docs/             # 설정, 아키텍처, 로드맵
 
 ## 검색 공급자 주의사항
 
-현재 웹 결과 수집은 `kannyan`의 브라우저형 HTML 검색과 DOM 파싱 방향을 채택하되, 한 공급자에 의존하지 않도록 DuckDuckGo, Naver, Bing 엔진을 합성합니다. 각 엔진은 JSDOM 파서와 진단 결과를 독립적으로 가지며 결과가 부족하면 다음 엔진이 보충합니다. HTML 응답 구조나 접근 정책이 바뀌면 해당 엔진만 교체할 수 있습니다. Gemini에는 실제 검색 결과만 전달하며 유료 Google Search grounding은 사용하지 않습니다.
+현재 웹 결과 수집은 `kannyan`의 브라우저형 HTML 검색과 DOM 파싱 방향을 채택하되, 한 공급자에 의존하지 않도록 DuckDuckGo, Naver, Bing 엔진을 합성합니다. 각 엔진은 JSDOM 파서와 진단 결과를 독립적으로 가지며 결과가 부족하면 다음 엔진이 보충합니다. HTML 응답 구조나 접근 정책이 바뀌면 해당 엔진만 교체할 수 있습니다. Gemini에는 실제 검색 결과를 내부 자료로 전달하지만, 생성된 답변에서는 출처 번호·URL·장식용 Markdown을 제거합니다.

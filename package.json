@@ -2,7 +2,7 @@
   "name": "discord-web-search-bot",
   "version": "0.1.0",
   "private": true,
-  "description": "A source-aware Discord web search bot powered by Gemini.",
+  "description": "A natural-language Discord web search bot powered by Gemini.",
   "type": "module",
   "engines": {
     "node": ">=22.0.0"
