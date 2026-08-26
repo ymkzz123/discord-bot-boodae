@@ -13,6 +13,7 @@
     "commands:register": "tsx scripts/register-commands.ts",
     "dev": "tsx watch src/index.ts",
     "invite:url": "tsx scripts/create-invite-url.ts",
+    "search:smoke": "tsx scripts/smoke-search.ts",
     "start": "node --enable-source-maps dist/index.js",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -21,6 +22,7 @@
   "dependencies": {
     "discord.js": "^14.27.0",
     "dotenv": "^17.2.3",
+    "jsdom": "^26.1.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
