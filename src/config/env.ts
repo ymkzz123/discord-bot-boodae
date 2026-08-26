@@ -7,6 +7,7 @@ const snowflake = z.string().regex(/^\d+$/, "Discord ID must contain digits only
 const discordIdentitySchema = z.object({
   DISCORD_CLIENT_ID: snowflake,
   DISCORD_GUILD_ID: z.union([snowflake, z.literal("")]).optional(),
+  DISCORD_ALLOWED_GUILD_IDS: z.string().optional(),
 });
 
 const sharedSchema = discordIdentitySchema.extend({
@@ -35,20 +36,45 @@ function normalizeGuildId(value: string | undefined): string | undefined {
   return value?.trim() || undefined;
 }
 
-export function loadRuntimeConfig() {
-  const env = runtimeSchema.parse(process.env);
-  const discordGuildId = normalizeGuildId(env.DISCORD_GUILD_ID);
+export function parseAllowedGuildIds(
+  value: string | undefined,
+  legacyGuildId?: string,
+): string[] {
+  const candidates = [
+    ...(value?.split(",") ?? []),
+    ...(legacyGuildId ? [legacyGuildId] : []),
+  ]
+    .map((guildId) => guildId.trim())
+    .filter(Boolean);
+  const uniqueGuildIds = [...new Set(candidates)];
 
-  if (!discordGuildId) {
+  const invalidGuildId = uniqueGuildIds.find((guildId) => !/^\d+$/.test(guildId));
+  if (invalidGuildId) {
     throw new Error(
-      "DISCORD_GUILD_ID is required because this bot only runs in one allowed Discord server",
+      `DISCORD_ALLOWED_GUILD_IDS contains an invalid Discord server ID: ${invalidGuildId}`,
     );
   }
+
+  if (uniqueGuildIds.length === 0) {
+    throw new Error(
+      "DISCORD_ALLOWED_GUILD_IDS is required because this bot only runs in allowed Discord servers",
+    );
+  }
+
+  return uniqueGuildIds;
+}
+
+export function loadRuntimeConfig() {
+  const env = runtimeSchema.parse(process.env);
+  const discordAllowedGuildIds = parseAllowedGuildIds(
+    env.DISCORD_ALLOWED_GUILD_IDS,
+    normalizeGuildId(env.DISCORD_GUILD_ID),
+  );
 
   return {
     discordClientId: env.DISCORD_CLIENT_ID,
     discordToken: env.DISCORD_TOKEN,
-    discordGuildId,
+    discordAllowedGuildIds,
     geminiApiKey: env.GEMINI_API_KEY,
     geminiModel: env.GEMINI_MODEL,
     searchTimeoutMs: env.SEARCH_TIMEOUT_MS,
@@ -69,7 +95,10 @@ export function loadRegistrationConfig() {
   return {
     discordClientId: env.DISCORD_CLIENT_ID,
     discordToken: env.DISCORD_TOKEN,
-    discordGuildId: normalizeGuildId(env.DISCORD_GUILD_ID),
+    discordAllowedGuildIds: parseAllowedGuildIds(
+      env.DISCORD_ALLOWED_GUILD_IDS,
+      normalizeGuildId(env.DISCORD_GUILD_ID),
+    ),
   };
 }
 
@@ -78,6 +107,9 @@ export function loadInviteConfig() {
 
   return {
     discordClientId: env.DISCORD_CLIENT_ID,
-    discordGuildId: normalizeGuildId(env.DISCORD_GUILD_ID),
+    discordAllowedGuildIds: parseAllowedGuildIds(
+      env.DISCORD_ALLOWED_GUILD_IDS,
+      normalizeGuildId(env.DISCORD_GUILD_ID),
+    ),
   };
 }

@@ -39,7 +39,7 @@
 2. 대상 서버 아이콘을 우클릭합니다.
 3. **서버 ID 복사**를 선택합니다.
 
-서버 초대 코드와 서버 ID는 서로 다른 값입니다. `.env`에는 숫자로 된 서버 ID를 입력합니다.
+서버 초대 코드와 서버 ID는 서로 다른 값입니다. 여러 서버를 허용하려면 각각의 숫자 서버 ID를 복사합니다.
 
 ## 4. 환경 변수 설정
 
@@ -50,7 +50,7 @@ cp .env.example .env
 ```dotenv
 DISCORD_CLIENT_ID=숫자로_된_Application_ID
 DISCORD_TOKEN=발급받은_봇_토큰
-DISCORD_GUILD_ID=숫자로_된_대상_서버_ID
+DISCORD_ALLOWED_GUILD_IDS=첫번째_서버_ID,두번째_서버_ID
 GEMINI_API_KEY=Google_AI_Studio에서_발급한_키
 GEMINI_MODEL=gemini-3.1-flash-lite
 ```
@@ -64,7 +64,7 @@ npm install
 npm run invite:url
 ```
 
-출력된 `https://discord.com/oauth2/authorize?...` URL을 브라우저에서 엽니다. `DISCORD_GUILD_ID`를 입력했다면 대상 서버가 미리 선택되고 다른 서버로 변경할 수 없습니다.
+허용 서버별로 출력된 `https://discord.com/oauth2/authorize?...` URL을 브라우저에서 하나씩 엽니다. 각 URL은 대상 서버가 미리 선택되고 다른 서버로 변경할 수 없습니다.
 
 Discord 승인 화면에서 권한을 확인하고 **승인**합니다. 설치할 서버가 목록에 없다면 현재 Discord 계정에 그 서버의 **서버 관리** 권한이 없는 것입니다.
 
@@ -77,7 +77,7 @@ Discord 승인 화면에서 권한을 확인하고 **승인**합니다. 설치�
 3. **Bot** 메뉴를 엽니다.
 4. **Public Bot**을 끄고 저장합니다.
 
-순서를 반대로 하면 private application에 install 설정이 남아 있다는 오류가 날 수 있습니다. 이 설정은 신규 설치를 막고, 코드의 `DISCORD_GUILD_ID` 검사는 다른 서버와 DM에서의 실행을 차단합니다. 봇이 이미 다른 서버에 들어가 있다면 실행 시 자동으로 그 서버를 나갑니다.
+순서를 반대로 하면 private application에 install 설정이 남아 있다는 오류가 날 수 있습니다. 이 설정은 신규 설치를 막고, 코드의 `DISCORD_ALLOWED_GUILD_IDS` 검사는 목록 밖 서버와 DM에서의 실행을 차단합니다. 봇이 이미 허용되지 않은 서버에 들어가 있다면 실행 시 자동으로 그 서버를 나갑니다.
 
 ## 7. 슬래시 명령 등록과 실행
 
@@ -97,7 +97,7 @@ npm run dev
 
 `/search` 결과는 채널에 공개됩니다. 명령 정의가 Discord에 반영되도록 코드를 업데이트한 뒤 `npm run commands:register`를 다시 실행하세요.
 
-`DISCORD_GUILD_ID`의 서버에 명령이 바로 등록됩니다. 이 값은 비공개 봇의 허용 서버이므로 비워 둘 수 없습니다.
+`DISCORD_ALLOWED_GUILD_IDS`에 적힌 모든 서버에 명령이 바로 등록됩니다. 허용 서버 목록은 비워 둘 수 없습니다.
 
 ## 8. 계속 온라인으로 유지하기
 
@@ -112,7 +112,7 @@ docker compose logs -f bot
 
 ### 슬래시 명령이 보이지 않음
 
-- `DISCORD_GUILD_ID`가 올바른 숫자 서버 ID인지 확인합니다.
+- `DISCORD_ALLOWED_GUILD_IDS`가 쉼표로 구분된 올바른 숫자 서버 ID 목록인지 확인합니다.
 - `npm run commands:register`를 다시 실행합니다.
 - 설치 scope에 `applications.commands`가 포함됐는지 확인합니다.
 

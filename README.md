@@ -84,7 +84,8 @@ Discord Developer Portal에서 앱을 만들고 특정 서버에 설치하는 �
 |---|---:|---|---|
 | `DISCORD_CLIENT_ID` | 예 | - | Discord Application ID |
 | `DISCORD_TOKEN` | 예 | - | Discord Bot Token |
-| `DISCORD_GUILD_ID` | 예 | - | 봇 사용을 허용할 단 하나의 Discord 서버 ID |
+| `DISCORD_ALLOWED_GUILD_IDS` | 예 | - | 봇 사용을 허용할 서버 ID 목록. 쉼표로 구분 |
+| `DISCORD_GUILD_ID` | 아니요 | 빈 값 | 이전 단일 서버 설정과의 호환용 ID |
 | `GEMINI_API_KEY` | 예 | - | Google AI Studio에서 발급한 Gemini API 키 |
 | `GEMINI_MODEL` | 아니요 | `gemini-3.1-flash-lite` | 검색 결과를 요약할 모델 |
 | `SEARCH_TIMEOUT_MS` | 아니요 | `60000` | 각 외부 요청의 타임아웃 |
@@ -100,14 +101,19 @@ Discord Developer Portal에서 앱을 만들고 특정 서버에 설치하는 �
 
 ## 비공개 봇과 명령 등록 범위
 
-- `DISCORD_GUILD_ID`의 서버에만 명령을 등록하고 봇 기능을 허용합니다.
-- 값이 없으면 실수로 공개 범위에서 실행되지 않도록 봇 시작이 중단됩니다.
+- `DISCORD_ALLOWED_GUILD_IDS`에 쉼표로 나열한 서버에만 명령을 등록하고 봇 기능을 허용합니다.
+- 허용 서버가 하나도 없으면 실수로 공개 범위에서 실행되지 않도록 봇 시작이 중단됩니다.
 - 다른 서버에 설치되더라도 봇은 시작 시점 또는 서버 추가 이벤트에서 즉시 그 서버를 나갑니다.
 - Discord Developer Portal의 **Installation → Install Link**를 `None`으로 바꾼 뒤, **Bot → Public Bot**을 꺼야 다른 사용자의 신규 설치도 막을 수 있습니다.
 
 명령 정의를 바꾼 뒤에는 `npm run commands:register`를 다시 실행해야 합니다.
 
+```env
+DISCORD_ALLOWED_GUILD_IDS=111111111111111111,222222222222222222
+```
+
 `/search` 답변은 기본적으로 채널에 공개되므로 같은 채널의 다른 사용자도 답변을 볼 수 있습니다. 검색에 사용한 URL과 출처 목록은 메시지에 표시하지 않습니다.
+`/lineup`은 모바일에서도 원정팀과 홈팀 타순이 세로로 읽히도록 경기별 Discord 임베드 카드로 표시합니다.
 
 ## 품질 확인
 
