@@ -1,0 +1,39 @@
+{
+  "code": 200,
+  "success": true,
+  "result": {
+    "previewData": {
+      "gameInfo": { "stadium": "문학" },
+      "awayStarter": { "playerInfo": { "name": "원정선발" } },
+      "homeStarter": { "playerInfo": { "name": "홈선발" } },
+      "awayTeamLineUp": {
+        "fullLineUp": [
+          { "playerName": "원정선발", "positionName": "선발투수" },
+          { "playerName": "원정타자1", "positionName": "중견수" },
+          { "playerName": "원정타자2", "positionName": "유격수" },
+          { "playerName": "원정타자3", "positionName": "좌익수" },
+          { "playerName": "원정타자4", "positionName": "1루수" },
+          { "playerName": "원정타자5", "positionName": "지명타자" },
+          { "playerName": "원정타자6", "positionName": "3루수" },
+          { "playerName": "원정타자7", "positionName": "우익수" },
+          { "playerName": "원정타자8", "positionName": "포수" },
+          { "playerName": "원정타자9", "positionName": "2루수" }
+        ]
+      },
+      "homeTeamLineUp": {
+        "fullLineUp": [
+          { "playerName": "홈선발", "positionName": "선발투수" },
+          { "playerName": "홈타자1", "positionName": "중견수" },
+          { "playerName": "홈타자2", "positionName": "유격수" },
+          { "playerName": "홈타자3", "positionName": "좌익수" },
+          { "playerName": "홈타자4", "positionName": "1루수" },
+          { "playerName": "홈타자5", "positionName": "지명타자" },
+          { "playerName": "홈타자6", "positionName": "3루수" },
+          { "playerName": "홈타자7", "positionName": "우익수" },
+          { "playerName": "홈타자8", "positionName": "포수" },
+          { "playerName": "홈타자9", "positionName": "2루수" }
+        ]
+      }
+    }
+  }
+}

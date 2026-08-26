@@ -1,0 +1,22 @@
+{
+  "code": 200,
+  "success": true,
+  "result": {
+    "games": [
+      {
+        "gameId": "20260827HHSK02026",
+        "categoryId": "kbo",
+        "gameDate": "2026-08-27",
+        "gameDateTime": "2026-08-27T18:30:00",
+        "homeTeamCode": "SK",
+        "homeTeamName": "SSG",
+        "awayTeamCode": "HH",
+        "awayTeamName": "한화",
+        "statusCode": "BEFORE",
+        "statusInfo": "경기전",
+        "cancel": false,
+        "suspended": false
+      }
+    ]
+  }
+}
