@@ -123,6 +123,14 @@ docker compose logs -f bot
 
 - `GEMINI_API_KEY`가 올바른지, Google AI Studio에서 선택한 프로젝트의 키인지 확인합니다.
 - 무료 티어의 요청 한도와 `GEMINI_MODEL`의 사용 가능 여부를 확인합니다.
-- `SEARCH_PROVIDER`는 DuckDuckGo에서 결과를 가져오지 못한 경우이므로 잠시 뒤 다시 시도합니다.
+- `SEARCH_PROVIDER`는 DuckDuckGo, Naver, Bing 검색 엔진이 모두 차단되거나 요청에 실패한 경우입니다. 실행 로그의 `Search pipeline exhausted` 뒤에 표시되는 엔진별 상태를 확인합니다.
+- `SEARCH_NO_RESULTS`가 계속되면 최신 코드를 받은 뒤 `npm install`을 실행했는지 확인합니다. 새 검색 계층은 JSDOM을 사용합니다.
 - Discord에 표시된 `SEARCH_AUTH`, `SEARCH_QUOTA`, `SEARCH_MODEL`, `SEARCH_TIMEOUT` 등의 안전한 오류 코드를 기준으로 설정을 점검합니다.
 - 정확한 원인은 봇을 실행한 터미널에서 `Search failed` 로그를 확인합니다. API 키나 Discord 토큰은 공유하지 마세요.
+
+검색 계층만 따로 재현하려면 다음을 실행합니다.
+
+```bash
+npm run search:smoke -- 류현진
+npm run search:smoke -- 드래곤빌리지
+```

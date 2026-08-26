@@ -4,7 +4,7 @@
 
 - [x] `/search`, `/reset`, `/ping`
 - [x] 검색 수집과 답변 모델을 인터페이스로 분리
-- [x] DuckDuckGo 결과 + Gemini 요약
+- [x] JSDOM 기반 DuckDuckGo/Naver/Bing 합성 검색 + Gemini 요약
 - [x] 공개 답변과 클릭 가능한 실제 출처 목록
 - [x] Gemini·검색 공급자 오류 분류
 - [ ] 실제 Discord 개발 서버에서 end-to-end 확인
@@ -12,7 +12,7 @@
 ## v0.3 — Jungol 문제 검색
 
 - `/jungol problem:<번호 또는 검색어>` 명령
-- Jungol 전용 `SearchProvider`와 응답 스키마
+- 공통 `BrowserHttpClient` 위의 Jungol 전용 페이지 스크래퍼와 응답 스키마
 - 문제 번호, 제목, 출처 URL, 제한 조건 표시
 - 사이트 요청 속도 제한과 짧은 캐시
 - HTML fixture 기반 파서 테스트
@@ -23,6 +23,13 @@
 - 태그 동의어와 한글/영문 입력 정규화
 - 여러 태그의 AND/OR 검색 정책
 - 페이지네이션 버튼과 결과 중복 제거
+
+## v0.5 — Naver Sports KBO
+
+- Naver Sports 전용 경기 일정·결과 스크래퍼
+- 팀, 날짜, 경기 상태를 구조화한 KBO 응답 스키마
+- 사이트 fixture 기반 DOM 파서 회귀 테스트
+- 일반 웹 검색 엔진과 스포츠 데이터 수집 로직 완전 분리
 
 ## 안정적 운영
 

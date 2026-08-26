@@ -2,7 +2,11 @@ import { loadRuntimeConfig } from "./config/env.js";
 import { createBot } from "./bot/create-bot.js";
 import { GeminiAnswerGenerator } from "./gemini/gemini-answer-generator.js";
 import { createLogger } from "./lib/logger.js";
-import { DuckDuckGoSearchProvider } from "./search/duckduckgo-search-provider.js";
+import { BrowserHttpClient } from "./scraping/browser-http-client.js";
+import { CompositeSearchProvider } from "./search/composite-search-provider.js";
+import { BingHtmlEngine } from "./search/engines/bing-engine.js";
+import { DuckDuckGoHtmlEngine } from "./search/engines/duckduckgo-engine.js";
+import { NaverHtmlEngine } from "./search/engines/naver-engine.js";
 import { WebSearchService } from "./search/web-search-service.js";
 import { FixedWindowRateLimiter } from "./security/rate-limiter.js";
 import { ConversationStore } from "./state/conversation-store.js";
@@ -15,7 +19,15 @@ const rateLimiter = new FixedWindowRateLimiter(
   config.rateLimitRequests,
   config.rateLimitWindowMs,
 );
-const searchProvider = new DuckDuckGoSearchProvider(config.searchTimeoutMs);
+const browserHttp = new BrowserHttpClient();
+const searchProvider = new CompositeSearchProvider(
+  [
+    new DuckDuckGoHtmlEngine(browserHttp),
+    new NaverHtmlEngine(browserHttp),
+    new BingHtmlEngine(browserHttp),
+  ],
+  config.searchTimeoutMs,
+);
 const answerGenerator = new GeminiAnswerGenerator(
   config.geminiApiKey,
   config.geminiModel,

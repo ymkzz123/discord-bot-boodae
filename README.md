@@ -9,7 +9,7 @@ Discord 안에서 최신 웹 정보를 검색하고, 클릭 가능한 출처와 
 
 ## 현재 기능
 
-- `/search query:<질문>`: DuckDuckGo에서 결과를 수집하고 Gemini가 출처 번호와 함께 요약
+- `/search query:<질문>`: DuckDuckGo → Naver → Bing 순서로 결과를 채우고 Gemini가 출처 번호와 함께 요약
 - `/reset`: 현재 사용자·채널의 30분 후속 대화 문맥 초기화
 - `/ping`: Gateway 연결 상태 확인
 - 검색에 실제 사용한 URL을 Discord에서 클릭 가능한 출처 목록으로 표시
@@ -24,7 +24,8 @@ Discord 안에서 최신 웹 정보를 검색하고, 클릭 가능한 출처와 
 |---|---|---|
 | 언어 | TypeScript (strict) | 기능 확장 시 인터페이스와 오류를 일찍 발견 |
 | Discord | discord.js v14 | 슬래시 명령과 Gateway 생태계가 안정적 |
-| 검색 수집 | `SearchProvider` + DuckDuckGo HTML | API 키 없이 검색하고 향후 Jungol 공급자를 독립적으로 추가 |
+| 검색 수집 | 합성 공급자 + DuckDuckGo/Naver/Bing 엔진 | 한 엔진이 차단되거나 결과가 적어도 다음 엔진으로 자동 보충 |
+| HTML 파싱 | JSDOM | 정규식 대신 실제 DOM 선택자로 검색 결과와 향후 사이트 데이터를 파싱 |
 | 답변 생성 | Gemini REST API | 무료 티어 모델로 검색 결과를 간결하게 요약 |
 | 상태 | 메모리 기반 이전 질문·답변 저장 | MVP에서 DB 없이 후속 질문 지원 |
 | 검증 | Zod | 시작 시 환경 변수 오류를 명확히 표시 |
@@ -38,8 +39,12 @@ flowchart TD
     C --> G["discord.js Gateway"]
     G --> L{"속도 제한"}
     L -->|허용| P["SearchProvider"]
-    P --> D["DuckDuckGo 결과 수집"]
+    P --> D["DuckDuckGo"]
+    D -->|결과 부족| N["Naver"]
+    N -->|결과 부족| B["Bing"]
     D --> M["Gemini 요약"]
+    N --> M
+    B --> M
     M --> F["출처 목록·메시지 분할"]
     F --> U
     M -. 이전 질문·답변 .-> S["30분 대화 상태"]
@@ -102,6 +107,14 @@ npm run check
 npm run build
 ```
 
+Discord나 Gemini를 제외하고 현재 실행 환경의 검색 엔진만 점검하려면:
+
+```bash
+npm run search:smoke -- 류현진
+```
+
+성공하면 결과마다 `providerId`가 표시됩니다. 실패하면 `Search pipeline exhausted` 진단에서 어느 엔진이 차단되거나 빈 결과를 반환했는지 확인할 수 있습니다.
+
 Docker로 실행하려면:
 
 ```bash
@@ -117,7 +130,8 @@ src/
 ├── config/       # 환경 변수 검증
 ├── gemini/       # Gemini 답변 생성기
 ├── lib/          # 로깅과 Discord 메시지 처리
-├── search/       # 공급자 인터페이스, 웹 결과 수집, 출처 처리
+├── scraping/     # 브라우저형 HTTP 클라이언트와 향후 사이트 스크래퍼 공통 계층
+├── search/       # 합성 공급자, 검색 엔진, 출처 처리
 ├── security/     # 사용자별 속도 제한
 ├── state/        # 짧은 후속 대화 문맥 보관
 └── index.ts      # 의존성 조립과 프로세스 시작
@@ -151,4 +165,4 @@ docs/             # 설정, 아키텍처, 로드맵
 
 ## 검색 공급자 주의사항
 
-현재 웹 결과 수집은 `kannyan` 저장소의 “외부 검색 결과와 LLM 요약을 분리”하는 접근을 참고해 DuckDuckGo HTML 엔드포인트를 사용합니다. 공식 유료 검색 API가 아니므로 응답 형식이나 접근 정책이 바뀌면 동작하지 않을 수 있습니다. 이 경우 `SearchProvider` 구현만 Brave Search, Bing 등의 공식 API로 교체할 수 있습니다. Gemini에는 검색 결과의 제목·URL·요약만 전달하며, Gemini의 유료 Google Search grounding은 사용하지 않습니다.
+현재 웹 결과 수집은 `kannyan`의 브라우저형 HTML 검색과 DOM 파싱 방향을 채택하되, 한 공급자에 의존하지 않도록 DuckDuckGo, Naver, Bing 엔진을 합성합니다. 각 엔진은 JSDOM 파서와 진단 결과를 독립적으로 가지며 결과가 부족하면 다음 엔진이 보충합니다. HTML 응답 구조나 접근 정책이 바뀌면 해당 엔진만 교체할 수 있습니다. Gemini에는 실제 검색 결과만 전달하며 유료 Google Search grounding은 사용하지 않습니다.
