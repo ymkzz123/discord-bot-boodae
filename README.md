@@ -84,7 +84,7 @@ Discord Developer Portal에서 앱을 만들고 특정 서버에 설치하는 �
 |---|---:|---|---|
 | `DISCORD_CLIENT_ID` | 예 | - | Discord Application ID |
 | `DISCORD_TOKEN` | 예 | - | Discord Bot Token |
-| `DISCORD_GUILD_ID` | 아니요 | 빈 값 | 개발 서버 ID. 입력하면 명령이 즉시 반영됨 |
+| `DISCORD_GUILD_ID` | 예 | - | 봇 사용을 허용할 단 하나의 Discord 서버 ID |
 | `GEMINI_API_KEY` | 예 | - | Google AI Studio에서 발급한 Gemini API 키 |
 | `GEMINI_MODEL` | 아니요 | `gemini-3.1-flash-lite` | 검색 결과를 요약할 모델 |
 | `SEARCH_TIMEOUT_MS` | 아니요 | `60000` | 각 외부 요청의 타임아웃 |
@@ -98,10 +98,12 @@ Discord Developer Portal에서 앱을 만들고 특정 서버에 설치하는 �
 
 > 실제 `.env`는 절대 커밋하지 마세요. `.gitignore`에 이미 포함되어 있습니다.
 
-## 명령 등록 범위
+## 비공개 봇과 명령 등록 범위
 
-- `DISCORD_GUILD_ID`를 넣으면 한 개발 서버에 명령을 등록합니다. 변경이 빠르게 반영되어 개발 중 권장합니다.
-- 비워 두면 전역 명령으로 등록합니다. 여러 서버에서 쓸 수 있지만 Discord 전파에 시간이 걸릴 수 있습니다.
+- `DISCORD_GUILD_ID`의 서버에만 명령을 등록하고 봇 기능을 허용합니다.
+- 값이 없으면 실수로 공개 범위에서 실행되지 않도록 봇 시작이 중단됩니다.
+- 다른 서버에 설치되더라도 봇은 시작 시점 또는 서버 추가 이벤트에서 즉시 그 서버를 나갑니다.
+- Discord Developer Portal의 **Installation → Install Link**를 `None`으로 바꾼 뒤, **Bot → Public Bot**을 꺼야 다른 사용자의 신규 설치도 막을 수 있습니다.
 
 명령 정의를 바꾼 뒤에는 `npm run commands:register`를 다시 실행해야 합니다.
 
