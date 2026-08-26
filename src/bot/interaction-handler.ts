@@ -6,6 +6,9 @@ import {
 
 import { splitDiscordMessage, truncateWithNotice } from "../lib/discord-message.js";
 import { serializeError, type Logger } from "../lib/logger.js";
+import { formatKboLineupAnswer } from "../kbo/format-lineup.js";
+import { getKboFailureMessage } from "../kbo/kbo-error.js";
+import type { KboLineupServiceContract } from "../kbo/types.js";
 import { getSearchFailureMessage } from "../search/search-error.js";
 import type { SearchService } from "../search/types.js";
 import type { FixedWindowRateLimiter } from "../security/rate-limiter.js";
@@ -13,10 +16,33 @@ import type { ConversationStore } from "../state/conversation-store.js";
 
 export interface InteractionDependencies {
   searchService: SearchService;
+  kboLineupService: KboLineupServiceContract;
   conversations: ConversationStore;
   rateLimiter: FixedWindowRateLimiter;
   logger: Logger;
   maxResponseChars: number;
+}
+
+async function sendPublicChunks(
+  interaction: ChatInputCommandInteraction,
+  value: string,
+  maxResponseChars: number,
+): Promise<void> {
+  const content = truncateWithNotice(value, maxResponseChars);
+  const chunks = splitDiscordMessage(content);
+  const [firstChunk, ...additionalChunks] = chunks;
+
+  await interaction.editReply({
+    content: firstChunk ?? "응답을 표시할 수 없습니다.",
+    allowedMentions: { parse: [] },
+  });
+
+  for (const chunk of additionalChunks) {
+    await interaction.followUp({
+      content: chunk,
+      allowedMentions: { parse: [] },
+    });
+  }
 }
 
 function conversationKey(interaction: ChatInputCommandInteraction): string {
@@ -68,21 +94,7 @@ async function handleSearch(
 
     dependencies.conversations.set(key, { query, answer: answer.markdown });
 
-    const content = truncateWithNotice(answer.markdown, dependencies.maxResponseChars);
-    const chunks = splitDiscordMessage(content);
-    const [firstChunk, ...additionalChunks] = chunks;
-
-    await interaction.editReply({
-      content: firstChunk ?? "응답을 표시할 수 없습니다.",
-      allowedMentions: { parse: [] },
-    });
-
-    for (const chunk of additionalChunks) {
-      await interaction.followUp({
-        content: chunk,
-        allowedMentions: { parse: [] },
-      });
-    }
+    await sendPublicChunks(interaction, answer.markdown, dependencies.maxResponseChars);
 
     dependencies.logger.info("Search completed", {
       userId: interaction.user.id,
@@ -107,12 +119,64 @@ async function handleSearch(
   }
 }
 
+async function handleLineup(
+  interaction: ChatInputCommandInteraction,
+  dependencies: InteractionDependencies,
+): Promise<void> {
+  const query = interaction.options.getString("query", true).trim();
+  const limit = dependencies.rateLimiter.consume(interaction.user.id);
+
+  if (!limit.allowed) {
+    await replyWithoutMentions(
+      interaction,
+      `요청이 너무 빠릅니다. 약 ${limit.retryAfterSeconds}초 뒤에 다시 시도해 주세요.`,
+      true,
+    );
+    return;
+  }
+
+  await interaction.deferReply();
+  const startedAt = Date.now();
+
+  try {
+    const answer = await dependencies.kboLineupService.getToday(query);
+    await sendPublicChunks(
+      interaction,
+      formatKboLineupAnswer(answer),
+      dependencies.maxResponseChars,
+    );
+    dependencies.logger.info("KBO lineup completed", {
+      userId: interaction.user.id,
+      guildId: interaction.guildId,
+      teamCode: answer.requestedTeam.code,
+      gameCount: answer.games.length,
+      durationMs: Date.now() - startedAt,
+    });
+  } catch (error) {
+    dependencies.logger.error("KBO lineup failed", {
+      userId: interaction.user.id,
+      guildId: interaction.guildId,
+      durationMs: Date.now() - startedAt,
+      ...serializeError(error),
+    });
+    await interaction.editReply({
+      content: getKboFailureMessage(error),
+      allowedMentions: { parse: [] },
+    });
+  }
+}
+
 export function createInteractionHandler(dependencies: InteractionDependencies) {
   return async (interaction: Interaction): Promise<void> => {
     if (!interaction.isChatInputCommand()) return;
 
     if (interaction.commandName === "search") {
       await handleSearch(interaction, dependencies);
+      return;
+    }
+
+    if (interaction.commandName === "lineup") {
+      await handleLineup(interaction, dependencies);
       return;
     }
 

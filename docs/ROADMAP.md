@@ -9,7 +9,17 @@
 - [x] Gemini·검색 공급자 오류 분류
 - [ ] 실제 Discord 개발 서버에서 end-to-end 확인
 
-## v0.3 — Jungol 문제 검색
+## v0.3 — Naver Sports KBO 1단계
+
+- [x] `/lineup query:<팀이름>` 명령
+- [x] KST 기준 당일 일정과 상대팀 검색
+- [x] 경기 전 preview와 경기 후 relay를 합친 라인업 공급자
+- [x] 10개 구단 팀명·별칭 정규화
+- [x] 30초 캐시, 타임아웃, 응답 스키마 검증
+- [x] fixture 기반 파서 회귀 테스트
+- [ ] 실제 라인업 발표 시간대 Discord end-to-end 확인
+
+## v0.4 — Jungol 문제 검색
 
 - `/jungol problem:<번호 또는 검색어>` 명령
 - 공통 `BrowserHttpClient` 위의 Jungol 전용 페이지 스크래퍼와 응답 스키마
@@ -17,19 +27,19 @@
 - 사이트 요청 속도 제한과 짧은 캐시
 - HTML fixture 기반 파서 테스트
 
-## v0.4 — Jungol 태그 탐색
+## v0.5 — Jungol 태그 탐색
 
 - `/jungol tags:<태그들>` 및 난이도·정렬 옵션
 - 태그 동의어와 한글/영문 입력 정규화
 - 여러 태그의 AND/OR 검색 정책
 - 페이지네이션 버튼과 결과 중복 제거
 
-## v0.5 — Naver Sports KBO
+## v0.6 — Naver Sports KBO 확장
 
-- Naver Sports 전용 경기 일정·결과 스크래퍼
-- 팀, 날짜, 경기 상태를 구조화한 KBO 응답 스키마
-- 사이트 fixture 기반 DOM 파서 회귀 테스트
-- 일반 웹 검색 엔진과 스포츠 데이터 수집 로직 완전 분리
+- 날짜 선택과 주간 팀 일정
+- 우천 취소·더블헤더 표시 강화
+- 경기 중 점수와 현재 이닝
+- 데이터 공급자 장애 진단과 운영 알림
 
 ## 안정적 운영
 

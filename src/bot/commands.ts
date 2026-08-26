@@ -13,6 +13,17 @@ export const commandBuilders = [
         .setMaxLength(1_000),
     ),
   new SlashCommandBuilder()
+    .setName("lineup")
+    .setDescription("오늘 KBO 경기와 양 팀의 라인업을 확인합니다")
+    .addStringOption((option) =>
+      option
+        .setName("query")
+        .setDescription("팀 이름 또는 별칭 (예: 한화, LG, 기아)")
+        .setRequired(true)
+        .setMinLength(1)
+        .setMaxLength(30),
+    ),
+  new SlashCommandBuilder()
     .setName("reset")
     .setDescription("현재 채널의 내 후속 대화 문맥을 초기화합니다"),
   new SlashCommandBuilder().setName("ping").setDescription("봇의 연결 상태를 확인합니다"),

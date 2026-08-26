@@ -35,6 +35,7 @@ flowchart LR
 | `CompositeSearchProvider` | 순차 fallback, 결과 보충, 중복 제거, 진단 요약 |
 | `WebSearchService` | 검색 결과와 Gemini 답변 생성 조정 |
 | `gemini` | 검색 결과 기반 답변 생성 |
+| `kbo` | 팀명 정규화, KST 날짜 결정, Naver Sports 일정·라인업 정규화 |
 
 검색 엔진이 모두 실패하면 내부 오류 메시지에 다음과 같은 진단이 남습니다.
 
@@ -46,7 +47,7 @@ Discord에는 안전한 오류 코드만 보이고, 실행 로그에서는 어�
 
 ## Jungol과 Naver Sports 확장
 
-Jungol 문제·태그와 Naver Sports KBO는 일반 검색 엔진으로 구현하지 않습니다. 두 기능은 `BrowserHttpClient`만 공유하고 각각 전용 URL 빌더, JSDOM 파서, 구조화된 응답 타입을 갖는 사이트 스크래퍼로 추가합니다.
+Jungol 문제·태그와 Naver Sports KBO는 일반 검색 엔진으로 구현하지 않습니다. Jungol은 `BrowserHttpClient` 위의 HTML 파서로, KBO는 별도 `JsonHttpClient` 위의 구조화된 공급자로 구현합니다.
 
 ```text
 BrowserHttpClient
@@ -56,10 +57,27 @@ BrowserHttpClient
 │   └── Bing
 └── 사이트 전용 스크래퍼
     ├── JungolProblemScraper
-    └── NaverSportsKboScraper
+
+JsonHttpClient
+└── NaverKboProvider
+    ├── schedule/games
+    ├── preview
+    └── relay
 ```
 
 이 경계를 지키면 검색 엔진 HTML 변경이 Jungol/KBO 기능을 깨뜨리지 않고, 반대 경우도 동일합니다.
+
+## KBO 라인업 흐름
+
+1. `/lineup`은 입력을 10개 구단 코드와 별칭 중 하나로 정규화합니다.
+2. 서버 시간대와 무관하게 `Asia/Seoul` 기준 오늘 날짜를 계산합니다.
+3. 당일 KBO 일정에서 해당 팀의 경기를 찾습니다. 더블헤더면 두 경기를 모두 유지합니다.
+4. 경기 전에는 `preview`의 선발투수와 발표된 타순을 읽습니다.
+5. 시작·종료된 경기는 `relay`의 확정 타순과 교체 선수로 보강합니다.
+6. 같은 일정과 경기 데이터는 기본 30초 동안 메모리에 보관해 반복 요청을 줄입니다.
+7. Zod 검증 실패는 `KBO_INVALID_RESPONSE`, 네트워크 오류는 `KBO_UPSTREAM_FAILED`로 분리합니다.
+
+네이버 스포츠 게이트웨이는 공식 개발자 API가 아니므로 응답 변경 가능성을 전제로 합니다. 인증 정보나 쿠키를 사용하지 않고 공개 데이터만 낮은 빈도로 요청하며, 제공자 구현과 fixture만 교체할 수 있게 격리합니다.
 
 ## 현재 한계
 

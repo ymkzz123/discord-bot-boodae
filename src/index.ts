@@ -2,7 +2,10 @@ import { loadRuntimeConfig } from "./config/env.js";
 import { createBot } from "./bot/create-bot.js";
 import { GeminiAnswerGenerator } from "./gemini/gemini-answer-generator.js";
 import { createLogger } from "./lib/logger.js";
+import { JsonHttpClient } from "./scraping/json-http-client.js";
 import { BrowserHttpClient } from "./scraping/browser-http-client.js";
+import { KboLineupService } from "./kbo/kbo-lineup-service.js";
+import { NaverKboProvider } from "./kbo/naver-kbo-provider.js";
 import { CompositeSearchProvider } from "./search/composite-search-provider.js";
 import { BingHtmlEngine } from "./search/engines/bing-engine.js";
 import { DuckDuckGoHtmlEngine } from "./search/engines/duckduckgo-engine.js";
@@ -20,6 +23,7 @@ const rateLimiter = new FixedWindowRateLimiter(
   config.rateLimitWindowMs,
 );
 const browserHttp = new BrowserHttpClient();
+const jsonHttp = new JsonHttpClient();
 const searchProvider = new CompositeSearchProvider(
   [
     new DuckDuckGoHtmlEngine(browserHttp),
@@ -38,10 +42,18 @@ const searchService = new WebSearchService(
   answerGenerator,
   config.searchMaxResults,
 );
+const kboLineupService = new KboLineupService(
+  new NaverKboProvider(
+    jsonHttp,
+    config.kboTimeoutMs,
+    config.kboCacheTtlMs,
+  ),
+);
 
 const bot = createBot(
   {
     searchService,
+    kboLineupService,
     conversations,
     rateLimiter,
     logger,
