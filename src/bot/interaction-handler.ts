@@ -21,6 +21,7 @@ export interface InteractionDependencies {
   rateLimiter: FixedWindowRateLimiter;
   logger: Logger;
   maxResponseChars: number;
+  allowedGuildId: string;
 }
 
 async function sendPublicChunks(
@@ -169,6 +170,18 @@ async function handleLineup(
 export function createInteractionHandler(dependencies: InteractionDependencies) {
   return async (interaction: Interaction): Promise<void> => {
     if (!interaction.isChatInputCommand()) return;
+
+    if (interaction.guildId !== dependencies.allowedGuildId) {
+      dependencies.logger.warn("Blocked interaction outside the allowed guild", {
+        userId: interaction.user.id,
+        guildId: interaction.guildId,
+      });
+      await replyWithoutMentions(
+        interaction,
+        "이 봇은 지정된 디스코드 서버에서만 사용할 수 있습니다.",
+      );
+      return;
+    }
 
     if (interaction.commandName === "search") {
       await handleSearch(interaction, dependencies);

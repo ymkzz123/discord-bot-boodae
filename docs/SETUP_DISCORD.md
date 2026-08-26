@@ -20,9 +20,9 @@
 
 이 프로젝트는 슬래시 명령만 사용하므로 **Message Content Intent**, **Server Members Intent**, **Presence Intent**를 켤 필요가 없습니다.
 
-## 2. 서버 설치 설정
+## 2. 최초 서버 설치 설정
 
-Developer Portal의 **Installation** 메뉴에서 다음을 확인합니다.
+아직 대상 서버에 봇을 설치하지 않은 경우에만 Developer Portal의 **Installation** 메뉴에서 다음을 설정합니다.
 
 - Installation Contexts: **Guild Install** 활성화
 - Install Link: **Discord Provided Link**
@@ -68,7 +68,18 @@ npm run invite:url
 
 Discord 승인 화면에서 권한을 확인하고 **승인**합니다. 설치할 서버가 목록에 없다면 현재 Discord 계정에 그 서버의 **서버 관리** 권한이 없는 것입니다.
 
-## 6. 슬래시 명령 등록과 실행
+## 6. 다른 사용자의 앱 설치 차단
+
+대상 서버에 설치를 마쳤다면 [Discord Developer Portal](https://discord.com/developers/applications)에서 다음 순서로 잠급니다.
+
+1. 애플리케이션의 **Installation** 메뉴를 엽니다.
+2. **Install Link**를 `None`으로 바꾸고 저장합니다.
+3. **Bot** 메뉴를 엽니다.
+4. **Public Bot**을 끄고 저장합니다.
+
+순서를 반대로 하면 private application에 install 설정이 남아 있다는 오류가 날 수 있습니다. 이 설정은 신규 설치를 막고, 코드의 `DISCORD_GUILD_ID` 검사는 다른 서버와 DM에서의 실행을 차단합니다. 봇이 이미 다른 서버에 들어가 있다면 실행 시 자동으로 그 서버를 나갑니다.
+
+## 7. 슬래시 명령 등록과 실행
 
 ```bash
 npm run commands:register
@@ -86,9 +97,9 @@ npm run dev
 
 `/search` 결과는 채널에 공개됩니다. 명령 정의가 Discord에 반영되도록 코드를 업데이트한 뒤 `npm run commands:register`를 다시 실행하세요.
 
-`DISCORD_GUILD_ID`가 설정되어 있으면 명령은 해당 서버에 바로 등록됩니다. 비워 두면 전역 명령이 되어 Discord 전체에 전파되는 데 시간이 걸릴 수 있습니다.
+`DISCORD_GUILD_ID`의 서버에 명령이 바로 등록됩니다. 이 값은 비공개 봇의 허용 서버이므로 비워 둘 수 없습니다.
 
-## 7. 계속 온라인으로 유지하기
+## 8. 계속 온라인으로 유지하기
 
 `npm run dev`가 실행 중인 터미널을 닫거나 Codespace가 중지되면 봇도 오프라인이 됩니다. 테스트할 때는 Codespace를 켜 둬도 되지만, 상시 운영할 때는 Docker를 실행할 수 있는 지속형 서버에 배포해야 합니다.
 

@@ -37,11 +37,18 @@ function normalizeGuildId(value: string | undefined): string | undefined {
 
 export function loadRuntimeConfig() {
   const env = runtimeSchema.parse(process.env);
+  const discordGuildId = normalizeGuildId(env.DISCORD_GUILD_ID);
+
+  if (!discordGuildId) {
+    throw new Error(
+      "DISCORD_GUILD_ID is required because this bot only runs in one allowed Discord server",
+    );
+  }
 
   return {
     discordClientId: env.DISCORD_CLIENT_ID,
     discordToken: env.DISCORD_TOKEN,
-    discordGuildId: normalizeGuildId(env.DISCORD_GUILD_ID),
+    discordGuildId,
     geminiApiKey: env.GEMINI_API_KEY,
     geminiModel: env.GEMINI_MODEL,
     searchTimeoutMs: env.SEARCH_TIMEOUT_MS,

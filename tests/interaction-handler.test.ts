@@ -1,4 +1,4 @@
-import type { Interaction } from "discord.js";
+import { MessageFlags, type Interaction } from "discord.js";
 import { describe, expect, it, vi } from "vitest";
 
 import {
@@ -45,6 +45,7 @@ describe("search interaction", () => {
         error: vi.fn(),
       },
       maxResponseChars: 10_000,
+      allowedGuildId: "guild-1",
     } as unknown as InteractionDependencies;
 
     await createInteractionHandler(dependencies)(interaction);
@@ -103,6 +104,7 @@ describe("search interaction", () => {
       rateLimiter: { consume: vi.fn().mockReturnValue({ allowed: true }) },
       logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
       maxResponseChars: 10_000,
+      allowedGuildId: "guild-1",
     } as unknown as InteractionDependencies;
 
     await createInteractionHandler(dependencies)(interaction);
@@ -113,5 +115,39 @@ describe("search interaction", () => {
       allowedMentions: { parse: [] },
     });
     expect(dependencies.kboLineupService.getToday).toHaveBeenCalledWith("한화");
+  });
+
+  it("rejects commands from every guild except the configured guild", async () => {
+    const reply = vi.fn().mockResolvedValue(undefined);
+    const interaction = {
+      isChatInputCommand: () => true,
+      commandName: "search",
+      user: { id: "user-1" },
+      guildId: "unauthorized-guild",
+      channelId: "channel-1",
+      reply,
+    } as unknown as Interaction;
+    const dependencies = {
+      searchService: { search: vi.fn() },
+      kboLineupService: { getToday: vi.fn() },
+      conversations: { get: vi.fn(), set: vi.fn(), delete: vi.fn() },
+      rateLimiter: { consume: vi.fn() },
+      logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+      maxResponseChars: 10_000,
+      allowedGuildId: "guild-1",
+    } as unknown as InteractionDependencies;
+
+    await createInteractionHandler(dependencies)(interaction);
+
+    expect(reply).toHaveBeenCalledWith({
+      content: "이 봇은 지정된 디스코드 서버에서만 사용할 수 있습니다.",
+      allowedMentions: { parse: [] },
+      flags: MessageFlags.Ephemeral,
+    });
+    expect(dependencies.searchService.search).not.toHaveBeenCalled();
+    expect(dependencies.logger.warn).toHaveBeenCalledWith(
+      "Blocked interaction outside the allowed guild",
+      { userId: "user-1", guildId: "unauthorized-guild" },
+    );
   });
 });
