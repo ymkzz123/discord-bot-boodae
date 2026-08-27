@@ -13,7 +13,19 @@ describe("KBO guessing player pool", () => {
 
   it("selects one player through an injectable secure index source", () => {
     const nextIndex = vi.fn().mockReturnValue(1);
-    expect(pickRandomKboPlayer(nextIndex)).toBe(KBO_GUESS_PLAYERS[1]);
+    expect(pickRandomKboPlayer(nextIndex)).toEqual({
+      name: KBO_GUESS_PLAYERS[1],
+      team: "KT 위즈",
+    });
     expect(nextIndex).toHaveBeenCalledWith(KBO_GUESS_PLAYERS.length);
+  });
+
+  it("adds a representative team to every possible answer", () => {
+    KBO_GUESS_PLAYERS.forEach((name, index) => {
+      expect(pickRandomKboPlayer(() => index)).toMatchObject({
+        name,
+        team: expect.any(String),
+      });
+    });
   });
 });
