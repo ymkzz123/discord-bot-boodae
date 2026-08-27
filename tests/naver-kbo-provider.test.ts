@@ -103,4 +103,38 @@ describe("NaverKboProvider", () => {
       code: "KBO_INVALID_RESPONSE",
     });
   });
+
+  it("resolves the actual current pitcher from relay state instead of the roster", async () => {
+    const startedSchedule = structuredClone(scheduleFixture);
+    startedSchedule.result.games[0]!.statusCode = "STARTED";
+    const relay = {
+      code: 200,
+      success: true,
+      result: {
+        textRelayData: {
+          currentGameState: { pitcher: "53754" },
+          homeLineup: { pitcher: [], batter: [] },
+          awayLineup: {
+            pitcher: [
+              { name: "선발투수", pcode: "11111", posName: "투수", batOrder: 0, seqno: 1 },
+              { name: "김서현", pcode: "53754", posName: "투수", batOrder: 0, seqno: 2 },
+            ],
+            batter: [],
+          },
+        },
+      },
+    };
+    const fetcher = vi.fn().mockImplementation((input: string | URL | Request) => {
+      const url = String(input);
+      return Promise.resolve(jsonResponse(url.includes("/relay") ? relay : startedSchedule));
+    });
+    const provider = new NaverKboProvider(new JsonHttpClient(fetcher), 10_000, 30_000);
+
+    const [startedGame] = await provider.getSchedule("2026-08-27");
+    await expect(provider.getCurrentPitcher(startedGame!)).resolves.toMatchObject({
+      playerCode: "53754",
+      name: "김서현",
+      team: { code: "HH" },
+    });
+  });
 });

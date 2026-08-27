@@ -40,6 +40,18 @@ export interface KboDataProvider {
   getLineup(game: KboScheduledGame): Promise<KboGameLineup>;
 }
 
+export interface KboCurrentPitcher {
+  gameId: string;
+  playerCode: string;
+  name: string;
+  team: KboTeam;
+}
+
+export interface KboAlertDataProvider {
+  getSchedule(date: string): Promise<KboScheduledGame[]>;
+  getCurrentPitcher(game: KboScheduledGame): Promise<KboCurrentPitcher | null>;
+}
+
 export interface KboLineupAnswer {
   date: string;
   requestedTeam: KboTeam;

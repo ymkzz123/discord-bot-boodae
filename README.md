@@ -11,6 +11,11 @@ Discord 안에서 최신 웹 정보를 검색하고 사람이 직접 정리한 �
 
 - `/search query:<질문>`: DuckDuckGo → Naver → Bing 순서로 결과를 채우고 Gemini가 자연스러운 문장으로 정리
 - `/lineup query:<팀이름>`: 한국 시간 기준 오늘의 KBO 상대팀, 경기 시각·구장, 선발투수와 양 팀 타순 확인
+- `/problem problem-id:<번호>`: 정올 문제 요약 정보와 원문 링크 확인
+- `/tag query:<태그>`: 정올 태그별 문제 검색
+- `/user handle:<이름>`: 정올 공개 유저 검색
+- `/kboplayer`: KBO 선수 맞히기용 비밀 정답을 명령 사용자에게만 표시
+- 선택한 채널에 KBO 플레이볼 및 김서현 등판 `44 ALERT` 역할 멘션
 - `/reset`: 현재 사용자·채널의 30분 후속 대화 문맥 초기화
 - `/ping`: Gateway 연결 상태 확인
 - 검색 자료와 URL은 답변 생성에만 사용하고 Discord 메시지에는 노출하지 않음
@@ -27,6 +32,7 @@ Discord 안에서 최신 웹 정보를 검색하고 사람이 직접 정리한 �
 | Discord | discord.js v14 | 슬래시 명령과 Gateway 생태계가 안정적 |
 | 검색 수집 | 합성 공급자 + DuckDuckGo/Naver/Bing 엔진 | 한 엔진이 차단되거나 결과가 적어도 다음 엔진으로 자동 보충 |
 | KBO 데이터 | Naver Sports 일정·preview·relay 수집기 | 경기 전 선발/타순과 경기 시작 후 확정 타순을 한 구조로 정규화 |
+| Jungol 데이터 | 공개 HTML 요약 수집기 | 로그인·문제 본문 복제 없이 문제·태그·유저 링크 제공 |
 | HTML 파싱 | JSDOM | 정규식 대신 실제 DOM 선택자로 검색 결과와 향후 사이트 데이터를 파싱 |
 | 답변 생성 | Gemini REST API | 무료 티어 모델로 검색 결과를 간결하게 요약 |
 | 상태 | 메모리 기반 이전 질문·답변 저장 | MVP에서 DB 없이 후속 질문 지원 |
@@ -92,6 +98,13 @@ Discord Developer Portal에서 앱을 만들고 특정 서버에 설치하는 �
 | `SEARCH_MAX_RESULTS` | 아니요 | `5` | Gemini에 전달할 검색 결과 수(최대 10) |
 | `KBO_TIMEOUT_MS` | 아니요 | `10000` | 네이버 스포츠 요청 타임아웃 |
 | `KBO_CACHE_SECONDS` | 아니요 | `30` | 같은 일정·라인업을 다시 요청하지 않는 메모리 캐시 시간 |
+| `KBO_ALERT_CHANNEL_IDS` | 아니요 | 빈 값 | 플레이볼·44 ALERT를 전송할 채널 ID 목록 |
+| `KBO_ALERT_ROLE_NAME` | 아니요 | `야구` | 알림에서 멘션할 역할의 정확한 이름 |
+| `KBO_ALERT_ACTIVE_POLL_SECONDS` | 아니요 | `30` | 경기 시작 전·진행 중 확인 간격 |
+| `KBO_ALERT_IDLE_POLL_SECONDS` | 아니요 | `300` | 그 외 시간 확인 간격 |
+| `KBO_PLAYBALL_GRACE_MINUTES` | 아니요 | `15` | 시작 알림을 늦게라도 허용할 시간 |
+| `JUNGOL_TIMEOUT_MS` | 아니요 | `10000` | Jungol 공개 페이지 요청 타임아웃 |
+| `JUNGOL_CACHE_SECONDS` | 아니요 | `300` | 같은 Jungol 요청의 캐시 시간 |
 | `CONVERSATION_TTL_MINUTES` | 아니요 | `30` | 후속 질문 문맥 보관 시간 |
 | `RATE_LIMIT_REQUESTS` | 아니요 | `5` | 한 윈도우의 사용자별 요청 수 |
 | `RATE_LIMIT_WINDOW_SECONDS` | 아니요 | `60` | 속도 제한 윈도우 |
@@ -99,12 +112,13 @@ Discord Developer Portal에서 앱을 만들고 특정 서버에 설치하는 �
 
 > 실제 `.env`는 절대 커밋하지 마세요. `.gitignore`에 이미 포함되어 있습니다.
 
-## 비공개 봇과 명령 등록 범위
+## 화이트리스트 봇과 설치 범위
 
 - `DISCORD_ALLOWED_GUILD_IDS`에 쉼표로 나열한 서버에만 명령을 등록하고 봇 기능을 허용합니다.
 - 허용 서버가 하나도 없으면 실수로 공개 범위에서 실행되지 않도록 봇 시작이 중단됩니다.
 - 다른 서버에 설치되더라도 봇은 시작 시점 또는 서버 추가 이벤트에서 즉시 그 서버를 나갑니다.
-- Discord Developer Portal의 **Installation → Install Link**를 `None`으로 바꾼 뒤, **Bot → Public Bot**을 꺼야 다른 사용자의 신규 설치도 막을 수 있습니다.
+- 허용 서버의 다른 관리자도 설치할 수 있게 Developer Portal의 **Bot → Public Bot**을 켜고, `npm run invite:url`로 생성한 서버 고정 링크를 전달합니다.
+- `Public Bot`이 켜져 있어도 화이트리스트 밖 서버에서는 기능이 차단되고 봇이 즉시 나갑니다.
 
 명령 정의를 바꾼 뒤에는 `npm run commands:register`를 다시 실행해야 합니다.
 
@@ -136,6 +150,16 @@ Discord에 연결하지 않고 오늘의 KBO 수집 결과를 확인하려면:
 npm run kbo:smoke -- 한화
 ```
 
+Jungol 공개 페이지 수집기를 점검하려면:
+
+```bash
+npm run jungol:smoke -- problem 1000
+npm run jungol:smoke -- tag mst
+npm run jungol:smoke -- user goodaiden
+```
+
+자세한 수집 범위와 부하 제한은 [Jungol 수집 정책](docs/JUNGOL.md)에 정리되어 있습니다.
+
 경기 하루 전이나 경기 당일 이른 시간에는 네이버 스포츠에 전체 타순이 아직 올라오지 않아 선발투수만 표시될 수 있습니다. 전체 타순이 발표되면 같은 명령에서 자동으로 1~9번 타순을 표시합니다.
 
 Docker로 실행하려면:
@@ -153,6 +177,7 @@ src/
 ├── config/       # 환경 변수 검증
 ├── gemini/       # Gemini 답변 생성기
 ├── kbo/          # 팀명 정규화, Naver Sports 공급자, 일정·라인업 서비스
+├── jungol/       # 공개 문제·태그·유저 페이지 수집기
 ├── lib/          # 로깅과 Discord 메시지 처리
 ├── scraping/     # 브라우저형 HTTP 클라이언트와 향후 사이트 스크래퍼 공통 계층
 ├── search/       # 합성 공급자와 검색 엔진

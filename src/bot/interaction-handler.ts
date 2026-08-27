@@ -8,20 +8,36 @@ import { splitDiscordMessage, truncateWithNotice } from "../lib/discord-message.
 import { serializeError, type Logger } from "../lib/logger.js";
 import { getKboFailureMessage } from "../kbo/kbo-error.js";
 import type { KboLineupServiceContract } from "../kbo/types.js";
+import { getJungolFailureMessage } from "../jungol/jungol-error.js";
+import type { JungolServiceContract } from "../jungol/types.js";
 import { getSearchFailureMessage } from "../search/search-error.js";
 import type { SearchService } from "../search/types.js";
 import type { FixedWindowRateLimiter } from "../security/rate-limiter.js";
 import type { ConversationStore } from "../state/conversation-store.js";
 import { buildKboLineupEmbeds } from "./kbo-lineup-embeds.js";
+import {
+  buildJungolProblemEmbed,
+  buildJungolTagEmbed,
+  buildJungolUserEmbed,
+} from "./jungol-embeds.js";
 
 export interface InteractionDependencies {
   searchService: SearchService;
   kboLineupService: KboLineupServiceContract;
+  jungolService: JungolServiceContract;
+  pickKboPlayer: () => string;
   conversations: ConversationStore;
   rateLimiter: FixedWindowRateLimiter;
   logger: Logger;
   maxResponseChars: number;
   allowedGuildIds: ReadonlySet<string>;
+}
+
+function consumeRequestLimit(
+  interaction: ChatInputCommandInteraction,
+  dependencies: InteractionDependencies,
+): { allowed: true } | { allowed: false; retryAfterSeconds: number } {
+  return dependencies.rateLimiter.consume(interaction.user.id);
 }
 
 async function sendPublicChunks(
@@ -71,7 +87,7 @@ async function handleSearch(
   dependencies: InteractionDependencies,
 ): Promise<void> {
   const query = interaction.options.getString("query", true).trim();
-  const limit = dependencies.rateLimiter.consume(interaction.user.id);
+  const limit = consumeRequestLimit(interaction, dependencies);
 
   if (!limit.allowed) {
     await replyWithoutMentions(
@@ -125,7 +141,7 @@ async function handleLineup(
   dependencies: InteractionDependencies,
 ): Promise<void> {
   const query = interaction.options.getString("query", true).trim();
-  const limit = dependencies.rateLimiter.consume(interaction.user.id);
+  const limit = consumeRequestLimit(interaction, dependencies);
 
   if (!limit.allowed) {
     await replyWithoutMentions(
@@ -166,6 +182,66 @@ async function handleLineup(
   }
 }
 
+async function handleJungol(
+  interaction: ChatInputCommandInteraction,
+  dependencies: InteractionDependencies,
+): Promise<void> {
+  const limit = consumeRequestLimit(interaction, dependencies);
+  if (!limit.allowed) {
+    await replyWithoutMentions(
+      interaction,
+      `요청이 너무 빠릅니다. 약 ${limit.retryAfterSeconds}초 뒤에 다시 시도해 주세요.`,
+      true,
+    );
+    return;
+  }
+
+  await interaction.deferReply();
+  const startedAt = Date.now();
+  try {
+    if (interaction.commandName === "problem") {
+      const problemId = interaction.options.getInteger("problem-id", true);
+      const problem = await dependencies.jungolService.getProblem(problemId);
+      await interaction.editReply({
+        embeds: [buildJungolProblemEmbed(problem)],
+        allowedMentions: { parse: [] },
+      });
+    } else if (interaction.commandName === "tag") {
+      const query = interaction.options.getString("query", true).trim();
+      const problems = await dependencies.jungolService.searchProblemsByTag(query);
+      await interaction.editReply({
+        embeds: [buildJungolTagEmbed(query, problems)],
+        allowedMentions: { parse: [] },
+      });
+    } else {
+      const handle = interaction.options.getString("handle", true).trim();
+      const accounts = await dependencies.jungolService.searchAccounts(handle);
+      await interaction.editReply({
+        embeds: [buildJungolUserEmbed(handle, accounts)],
+        allowedMentions: { parse: [] },
+      });
+    }
+    dependencies.logger.info("Jungol command completed", {
+      commandName: interaction.commandName,
+      userId: interaction.user.id,
+      guildId: interaction.guildId,
+      durationMs: Date.now() - startedAt,
+    });
+  } catch (error) {
+    dependencies.logger.error("Jungol command failed", {
+      commandName: interaction.commandName,
+      userId: interaction.user.id,
+      guildId: interaction.guildId,
+      durationMs: Date.now() - startedAt,
+      ...serializeError(error),
+    });
+    await interaction.editReply({
+      content: getJungolFailureMessage(error),
+      allowedMentions: { parse: [] },
+    });
+  }
+}
+
 export function createInteractionHandler(dependencies: InteractionDependencies) {
   return async (interaction: Interaction): Promise<void> => {
     if (!interaction.isChatInputCommand()) return;
@@ -189,6 +265,25 @@ export function createInteractionHandler(dependencies: InteractionDependencies) 
 
     if (interaction.commandName === "lineup") {
       await handleLineup(interaction, dependencies);
+      return;
+    }
+
+    if (["problem", "tag", "user"].includes(interaction.commandName)) {
+      await handleJungol(interaction, dependencies);
+      return;
+    }
+
+    if (interaction.commandName === "kboplayer") {
+      const player = dependencies.pickKboPlayer();
+      await replyWithoutMentions(
+        interaction,
+        `이번 비밀 정답 선수는 **${player}**입니다. 다른 참가자에게는 이 메시지가 보이지 않습니다.`,
+        true,
+      );
+      dependencies.logger.info("KBO guessing player selected", {
+        userId: interaction.user.id,
+        guildId: interaction.guildId,
+      });
       return;
     }
 

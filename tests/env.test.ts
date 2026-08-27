@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parseAllowedGuildIds } from "../src/config/env.js";
+import { parseAllowedGuildIds, parseOptionalDiscordIds } from "../src/config/env.js";
 
 describe("parseAllowedGuildIds", () => {
   it("parses, trims, and deduplicates a comma-separated allowlist", () => {
@@ -17,6 +17,19 @@ describe("parseAllowedGuildIds", () => {
     );
     expect(() => parseAllowedGuildIds("  ")).toThrow(
       "DISCORD_ALLOWED_GUILD_IDS is required",
+    );
+  });
+});
+
+describe("parseOptionalDiscordIds", () => {
+  it("accepts an empty alert channel list and rejects non-numeric IDs", () => {
+    expect(parseOptionalDiscordIds(undefined, "KBO_ALERT_CHANNEL_IDS")).toEqual([]);
+    expect(parseOptionalDiscordIds("111, 222,111", "KBO_ALERT_CHANNEL_IDS")).toEqual([
+      "111",
+      "222",
+    ]);
+    expect(() => parseOptionalDiscordIds("channel", "KBO_ALERT_CHANNEL_IDS")).toThrow(
+      "KBO_ALERT_CHANNEL_IDS contains an invalid Discord ID",
     );
   });
 });

@@ -10,6 +10,10 @@
 
 이 봇은 `Guilds` intent만 요청합니다. Message Content privileged intent와 Administrator 권한은 필요하지 않습니다.
 
+- `DISCORD_ALLOWED_GUILD_IDS` 밖 서버에서는 명령을 거부하고 자동으로 서버를 나갑니다.
+- KBO 알림은 설정된 채널과 정확히 일치하는 역할 하나만 멘션하며 `@everyone`을 허용하지 않습니다.
+- Jungol 기능은 공개 페이지의 요약 정보와 링크만 읽고 로그인·쿠키·CAPTCHA 우회를 사용하지 않습니다.
+
 ## 취약점 보고
 
 공개 Issue에 비밀 정보나 악용 절차를 올리지 마세요. 저장소 소유자에게 GitHub Security Advisory의 비공개 보고 기능으로 전달하는 방식을 권장합니다.

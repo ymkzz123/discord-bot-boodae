@@ -21,6 +21,13 @@ const runtimeSchema = sharedSchema.extend({
   SEARCH_MAX_RESULTS: z.coerce.number().int().min(1).max(10).default(5),
   KBO_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(30_000).default(10_000),
   KBO_CACHE_SECONDS: z.coerce.number().int().min(5).max(300).default(30),
+  KBO_ALERT_CHANNEL_IDS: z.string().optional(),
+  KBO_ALERT_ROLE_NAME: z.string().trim().min(1).max(100).default("야구"),
+  KBO_ALERT_ACTIVE_POLL_SECONDS: z.coerce.number().int().min(15).max(300).default(30),
+  KBO_ALERT_IDLE_POLL_SECONDS: z.coerce.number().int().min(60).max(3_600).default(300),
+  KBO_PLAYBALL_GRACE_MINUTES: z.coerce.number().int().min(1).max(60).default(15),
+  JUNGOL_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(30_000).default(10_000),
+  JUNGOL_CACHE_SECONDS: z.coerce.number().int().min(30).max(3_600).default(300),
   CONVERSATION_TTL_MINUTES: z.coerce.number().int().min(1).max(1_440).default(30),
   RATE_LIMIT_REQUESTS: z.coerce.number().int().min(1).max(100).default(5),
   RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().int().min(1).max(3_600).default(60),
@@ -64,6 +71,15 @@ export function parseAllowedGuildIds(
   return uniqueGuildIds;
 }
 
+export function parseOptionalDiscordIds(value: string | undefined, variableName: string): string[] {
+  const ids = [...new Set((value?.split(",") ?? []).map((id) => id.trim()).filter(Boolean))];
+  const invalidId = ids.find((id) => !/^\d+$/.test(id));
+  if (invalidId) {
+    throw new Error(`${variableName} contains an invalid Discord ID: ${invalidId}`);
+  }
+  return ids;
+}
+
 export function loadRuntimeConfig() {
   const env = runtimeSchema.parse(process.env);
   const discordAllowedGuildIds = parseAllowedGuildIds(
@@ -81,6 +97,16 @@ export function loadRuntimeConfig() {
     searchMaxResults: env.SEARCH_MAX_RESULTS,
     kboTimeoutMs: env.KBO_TIMEOUT_MS,
     kboCacheTtlMs: env.KBO_CACHE_SECONDS * 1_000,
+    kboAlertChannelIds: parseOptionalDiscordIds(
+      env.KBO_ALERT_CHANNEL_IDS,
+      "KBO_ALERT_CHANNEL_IDS",
+    ),
+    kboAlertRoleName: env.KBO_ALERT_ROLE_NAME,
+    kboAlertActivePollMs: env.KBO_ALERT_ACTIVE_POLL_SECONDS * 1_000,
+    kboAlertIdlePollMs: env.KBO_ALERT_IDLE_POLL_SECONDS * 1_000,
+    kboPlayballGraceMs: env.KBO_PLAYBALL_GRACE_MINUTES * 60_000,
+    jungolTimeoutMs: env.JUNGOL_TIMEOUT_MS,
+    jungolCacheTtlMs: env.JUNGOL_CACHE_SECONDS * 1_000,
     conversationTtlMs: env.CONVERSATION_TTL_MINUTES * 60_000,
     rateLimitRequests: env.RATE_LIMIT_REQUESTS,
     rateLimitWindowMs: env.RATE_LIMIT_WINDOW_SECONDS * 1_000,
