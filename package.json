@@ -13,6 +13,7 @@
     "commands:register": "tsx scripts/register-commands.ts",
     "dev": "tsx watch src/index.ts",
     "invite:url": "tsx scripts/create-invite-url.ts",
+    "jungol:smoke": "tsx scripts/smoke-jungol.ts",
     "kbo:smoke": "tsx scripts/smoke-kbo.ts",
     "search:smoke": "tsx scripts/smoke-search.ts",
     "start": "node --enable-source-maps dist/index.js",

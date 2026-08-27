@@ -186,4 +186,35 @@ describe("search interaction", () => {
       flags: MessageFlags.Ephemeral,
     });
   });
+
+  it("sends the kboplayer answer only to the command user", async () => {
+    const reply = vi.fn().mockResolvedValue(undefined);
+    const interaction = {
+      isChatInputCommand: () => true,
+      commandName: "kboplayer",
+      user: { id: "user-1" },
+      guildId: "guild-1",
+      channelId: "channel-1",
+      reply,
+    } as unknown as Interaction;
+    const dependencies = {
+      searchService: { search: vi.fn() },
+      kboLineupService: { getToday: vi.fn() },
+      jungolService: {},
+      pickKboPlayer: vi.fn().mockReturnValue("최동원"),
+      conversations: { get: vi.fn(), set: vi.fn(), delete: vi.fn() },
+      rateLimiter: { consume: vi.fn() },
+      logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+      maxResponseChars: 10_000,
+      allowedGuildIds: new Set(["guild-1"]),
+    } as unknown as InteractionDependencies;
+
+    await createInteractionHandler(dependencies)(interaction);
+
+    expect(reply).toHaveBeenCalledWith({
+      content: "이번 비밀 정답 선수는 **최동원**입니다. 다른 참가자에게는 이 메시지가 보이지 않습니다.",
+      allowedMentions: { parse: [] },
+      flags: MessageFlags.Ephemeral,
+    });
+  });
 });

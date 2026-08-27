@@ -10,6 +10,7 @@ declare module "jsdom" {
   }
 
   export interface JsdomDocument {
+    readonly body: JsdomElement;
     querySelector(selectors: string): JsdomElement | null;
     querySelectorAll(selectors: string): Iterable<JsdomElement>;
   }

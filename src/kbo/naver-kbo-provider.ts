@@ -5,6 +5,8 @@ import { JsonHttpClient } from "../scraping/json-http-client.js";
 import { KboError } from "./kbo-error.js";
 import { resolveKboTeamCode } from "./teams.js";
 import type {
+  KboAlertDataProvider,
+  KboCurrentPitcher,
   KboDataProvider,
   KboGameLineup,
   KboLineupPlayer,
@@ -68,6 +70,7 @@ const previewEnvelopeSchema = apiEnvelopeSchema(
 
 const relayPlayerSchema = z.object({
   name: z.string(),
+  pcode: z.union([z.string(), z.number()]).transform(String).optional(),
   posName: z.string().nullish(),
   batOrder: z.number().int().nullish(),
   seqno: z.number().int().nullish(),
@@ -83,6 +86,21 @@ const relayEnvelopeSchema = apiEnvelopeSchema(
     textRelayData: z.object({
       homeLineup: relayLineupSchema,
       awayLineup: relayLineupSchema,
+      currentGameState: z.object({
+        pitcher: z.union([z.string(), z.number()]).transform(String),
+      }).nullish(),
+      homeEntry: z.object({
+        pitcher: z.array(z.object({
+          name: z.string(),
+          pcode: z.union([z.string(), z.number()]).transform(String),
+        })).nullish(),
+      }).nullish(),
+      awayEntry: z.object({
+        pitcher: z.array(z.object({
+          name: z.string(),
+          pcode: z.union([z.string(), z.number()]).transform(String),
+        })).nullish(),
+      }).nullish(),
     }).nullish(),
   }),
 );
@@ -161,7 +179,7 @@ function relayLineup(
   };
 }
 
-export class NaverKboProvider implements KboDataProvider {
+export class NaverKboProvider implements KboDataProvider, KboAlertDataProvider {
   private readonly cache: AsyncTtlCache<unknown>;
 
   constructor(
@@ -251,6 +269,47 @@ export class NaverKboProvider implements KboDataProvider {
         published: home.batters.length >= 9 && away.batters.length >= 9,
       };
     }) as Promise<KboGameLineup>;
+  }
+
+  async getCurrentPitcher(game: KboScheduledGame): Promise<KboCurrentPitcher | null> {
+    if (game.statusCode !== "STARTED" || game.cancelled || game.suspended) return null;
+
+    const relayEndpoint = `/schedule/games/${encodeURIComponent(game.gameId)}/relay`;
+    const relayRaw = await this.request(
+      `relay:${game.gameId}`,
+      new URL(relayEndpoint, NAVER_SPORTS_API),
+    );
+    const relay = parseEnvelope(relayEnvelopeSchema, relayRaw, relayEndpoint).result.textRelayData;
+    const playerCode = relay?.currentGameState?.pitcher;
+    if (!relay || !playerCode) return null;
+
+    const homePitchers = [
+      ...(relay.homeLineup.pitcher ?? []),
+      ...(relay.homeEntry?.pitcher ?? []),
+    ];
+    const awayPitchers = [
+      ...(relay.awayLineup.pitcher ?? []),
+      ...(relay.awayEntry?.pitcher ?? []),
+    ];
+    const homePitcher = homePitchers.find((pitcher) => pitcher.pcode === playerCode);
+    if (homePitcher) {
+      return {
+        gameId: game.gameId,
+        playerCode,
+        name: homePitcher.name,
+        team: game.homeTeam,
+      };
+    }
+    const awayPitcher = awayPitchers.find((pitcher) => pitcher.pcode === playerCode);
+    if (awayPitcher) {
+      return {
+        gameId: game.gameId,
+        playerCode,
+        name: awayPitcher.name,
+        team: game.awayTeam,
+      };
+    }
+    return null;
   }
 
   private async request(cacheKey: string, url: URL): Promise<unknown> {

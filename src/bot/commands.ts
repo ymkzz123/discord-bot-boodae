@@ -24,6 +24,41 @@ export const commandBuilders = [
         .setMaxLength(30),
     ),
   new SlashCommandBuilder()
+    .setName("problem")
+    .setDescription("문제번호로 문제찾기")
+    .addIntegerOption((option) =>
+      option
+        .setName("problem-id")
+        .setDescription("찾을 정올 문제 번호")
+        .setRequired(true)
+        .setMinValue(1),
+    ),
+  new SlashCommandBuilder()
+    .setName("tag")
+    .setDescription("태그로 문제 검색하기")
+    .addStringOption((option) =>
+      option
+        .setName("query")
+        .setDescription("정올 문제 태그 (예: mst, 동적 계획법)")
+        .setRequired(true)
+        .setMinLength(1)
+        .setMaxLength(60),
+    ),
+  new SlashCommandBuilder()
+    .setName("user")
+    .setDescription("유저 검색하기")
+    .addStringOption((option) =>
+      option
+        .setName("handle")
+        .setDescription("찾을 정올 유저 이름")
+        .setRequired(true)
+        .setMinLength(2)
+        .setMaxLength(30),
+    ),
+  new SlashCommandBuilder()
+    .setName("kboplayer")
+    .setDescription("KBO 선수 맞히기용 비밀 정답을 뽑습니다"),
+  new SlashCommandBuilder()
     .setName("reset")
     .setDescription("현재 채널의 내 후속 대화 문맥을 초기화합니다"),
   new SlashCommandBuilder().setName("ping").setDescription("봇의 연결 상태를 확인합니다"),
