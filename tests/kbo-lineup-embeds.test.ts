@@ -64,4 +64,16 @@ describe("buildKboLineupEmbeds", () => {
     expect(embeds[0]?.title).toBe("한화 vs SSG · 1차전");
     expect(embeds[1]?.title).toBe("한화 vs SSG · 2차전");
   });
+
+  it("shows only a cancellation notice when the game is cancelled", () => {
+    const answer = makeAnswer();
+    answer.games[0]!.game.cancelled = true;
+
+    const [embed] = buildKboLineupEmbeds(answer).map((item) => item.toJSON());
+
+    expect(embed?.author?.name).toBe("KBO 오늘의 라인업");
+    expect(embed?.description).toContain("본 경기는 취소되었습니다.");
+    expect(embed?.fields).toBeUndefined();
+    expect(embed?.footer).toBeUndefined();
+  });
 });

@@ -43,11 +43,21 @@ function buildGameEmbed(
   const { game } = lineup;
   const doubleheader = gameCount > 1 ? ` · ${gameIndex + 1}차전` : "";
   const stadium = game.stadium ?? "구장 미정";
-
-  return new EmbedBuilder()
+  const embed = new EmbedBuilder()
     .setColor(KBO_BLUE)
     .setAuthor({ name: "KBO 오늘의 라인업" })
-    .setTitle(`${game.awayTeam.name} vs ${game.homeTeam.name}${doubleheader}`)
+    .setTitle(`${game.awayTeam.name} vs ${game.homeTeam.name}${doubleheader}`);
+
+  if (game.cancelled) {
+    return embed.setDescription([
+      `🗓️ **${formatDate(game.gameDate)}**  ·  ⏰ **${formatTime(game.gameDateTime)}**`,
+      `📍 ${stadium}  ·  **${formatStatus(lineup)}**`,
+      "",
+      "**본 경기는 취소되었습니다.**",
+    ].join("\n"));
+  }
+
+  return embed
     .setDescription([
       `🗓️ **${formatDate(game.gameDate)}**  ·  ⏰ **${formatTime(game.gameDateTime)}**`,
       `📍 ${stadium}  ·  **${formatStatus(lineup)}**`,

@@ -7,6 +7,7 @@ import {
 import { splitDiscordMessage, truncateWithNotice } from "../lib/discord-message.js";
 import { serializeError, type Logger } from "../lib/logger.js";
 import { getKboFailureMessage } from "../kbo/kbo-error.js";
+import type { KboGuessPlayer } from "../kbo/guess-players.js";
 import type { KboLineupServiceContract } from "../kbo/types.js";
 import { getJungolFailureMessage } from "../jungol/jungol-error.js";
 import type { JungolServiceContract } from "../jungol/types.js";
@@ -25,7 +26,7 @@ export interface InteractionDependencies {
   searchService: SearchService;
   kboLineupService: KboLineupServiceContract;
   jungolService: JungolServiceContract;
-  pickKboPlayer: () => string;
+  pickKboPlayer: () => KboGuessPlayer;
   conversations: ConversationStore;
   rateLimiter: FixedWindowRateLimiter;
   logger: Logger;
@@ -277,7 +278,7 @@ export function createInteractionHandler(dependencies: InteractionDependencies) 
       const player = dependencies.pickKboPlayer();
       await replyWithoutMentions(
         interaction,
-        `이번 비밀 정답 선수는 **${player}**입니다. 다른 참가자에게는 이 메시지가 보이지 않습니다.`,
+        `**${player.name} · ${player.team}**`,
         true,
       );
       dependencies.logger.info("KBO guessing player selected", {

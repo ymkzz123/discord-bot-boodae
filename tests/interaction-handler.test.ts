@@ -201,7 +201,7 @@ describe("search interaction", () => {
       searchService: { search: vi.fn() },
       kboLineupService: { getToday: vi.fn() },
       jungolService: {},
-      pickKboPlayer: vi.fn().mockReturnValue("최동원"),
+      pickKboPlayer: vi.fn().mockReturnValue({ name: "최동원", team: "롯데 자이언츠" }),
       conversations: { get: vi.fn(), set: vi.fn(), delete: vi.fn() },
       rateLimiter: { consume: vi.fn() },
       logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -212,7 +212,7 @@ describe("search interaction", () => {
     await createInteractionHandler(dependencies)(interaction);
 
     expect(reply).toHaveBeenCalledWith({
-      content: "이번 비밀 정답 선수는 **최동원**입니다. 다른 참가자에게는 이 메시지가 보이지 않습니다.",
+      content: "**최동원 · 롯데 자이언츠**",
       allowedMentions: { parse: [] },
       flags: MessageFlags.Ephemeral,
     });
