@@ -5,8 +5,9 @@ import { Events } from "discord.js";
 import { loadRuntimeConfig } from "./config/env.js";
 import { createBot } from "./bot/create-bot.js";
 import { DiscordKboAlertNotifier } from "./bot/discord-kbo-alert-notifier.js";
+import { DiscordGuildCommandSynchronizer } from "./bot/guild-command-synchronizer.js";
 import { GeminiAnswerGenerator } from "./gemini/gemini-answer-generator.js";
-import { createLogger } from "./lib/logger.js";
+import { createLogger, serializeError } from "./lib/logger.js";
 import { JsonHttpClient } from "./scraping/json-http-client.js";
 import { BrowserHttpClient } from "./scraping/browser-http-client.js";
 import { KboLineupService } from "./kbo/kbo-lineup-service.js";
@@ -22,9 +23,18 @@ import { WebSearchService } from "./search/web-search-service.js";
 import { FixedWindowRateLimiter } from "./security/rate-limiter.js";
 import { ConversationStore } from "./state/conversation-store.js";
 import { FileKboAlertStateStore } from "./state/kbo-alert-state-store.js";
+import { FileGuildAllowlistStore } from "./state/guild-allowlist-store.js";
 
 const config = loadRuntimeConfig();
 const logger = createLogger(config.logLevel);
+const guildAllowlist = await FileGuildAllowlistStore.open(
+  config.allowlistStorePath,
+  config.discordBootstrapGuildIds,
+);
+const commandSynchronizer = new DiscordGuildCommandSynchronizer(
+  config.discordClientId,
+  config.discordToken,
+);
 
 const conversations = new ConversationStore(config.conversationTtlMs);
 const rateLimiter = new FixedWindowRateLimiter(
@@ -62,8 +72,6 @@ const jungolService = new JungolHtmlProvider(
   config.jungolTimeoutMs,
   config.jungolCacheTtlMs,
 );
-const allowedGuildIds = new Set(config.discordAllowedGuildIds);
-
 const bot = createBot(
   {
     searchService,
@@ -74,7 +82,9 @@ const bot = createBot(
     rateLimiter,
     logger,
     maxResponseChars: config.maxResponseChars,
-    allowedGuildIds,
+    ownerUserId: config.discordOwnerUserId,
+    guildAllowlist,
+    commandSynchronizer,
   },
   logger,
 );
@@ -85,7 +95,7 @@ const kboAlertMonitor = config.kboAlertChannelIds.length > 0
       new DiscordKboAlertNotifier(
         bot,
         config.kboAlertChannelIds,
-        allowedGuildIds,
+        guildAllowlist,
         config.kboAlertRoleName,
         logger,
       ),
@@ -121,4 +131,9 @@ async function shutdown(signal: string): Promise<void> {
 process.once("SIGINT", () => void shutdown("SIGINT"));
 process.once("SIGTERM", () => void shutdown("SIGTERM"));
 
-await bot.login(config.discordToken);
+try {
+  await bot.login(config.discordToken);
+} catch (error) {
+  logger.error("Discord login failed", serializeError(error));
+  throw error;
+}

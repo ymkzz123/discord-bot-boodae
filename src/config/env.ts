@@ -2,12 +2,18 @@ import "dotenv/config";
 
 import { z } from "zod";
 
-const snowflake = z.string().regex(/^\d+$/, "Discord ID must contain digits only");
+import { isDiscordSnowflake } from "../lib/discord-snowflake.js";
+
+const snowflake = z.string().trim().refine(
+  isDiscordSnowflake,
+  "Discord ID must be a valid snowflake",
+);
 
 const discordIdentitySchema = z.object({
   DISCORD_CLIENT_ID: snowflake,
   DISCORD_GUILD_ID: z.union([snowflake, z.literal("")]).optional(),
   DISCORD_ALLOWED_GUILD_IDS: z.string().optional(),
+  ALLOWLIST_STORE_PATH: z.string().trim().min(1).default(".data/guild-allowlist.json"),
 });
 
 const sharedSchema = discordIdentitySchema.extend({
@@ -15,6 +21,7 @@ const sharedSchema = discordIdentitySchema.extend({
 });
 
 const runtimeSchema = sharedSchema.extend({
+  DISCORD_OWNER_USER_ID: snowflake,
   GEMINI_API_KEY: z.string().min(20, "GEMINI_API_KEY is missing or too short"),
   GEMINI_MODEL: z.string().min(1).default("gemini-3.1-flash-lite"),
   SEARCH_TIMEOUT_MS: z.coerce.number().int().min(5_000).max(120_000).default(60_000),
@@ -55,16 +62,10 @@ export function parseAllowedGuildIds(
     .filter(Boolean);
   const uniqueGuildIds = [...new Set(candidates)];
 
-  const invalidGuildId = uniqueGuildIds.find((guildId) => !/^\d+$/.test(guildId));
+  const invalidGuildId = uniqueGuildIds.find((guildId) => !isDiscordSnowflake(guildId));
   if (invalidGuildId) {
     throw new Error(
       `DISCORD_ALLOWED_GUILD_IDS contains an invalid Discord server ID: ${invalidGuildId}`,
-    );
-  }
-
-  if (uniqueGuildIds.length === 0) {
-    throw new Error(
-      "DISCORD_ALLOWED_GUILD_IDS is required because this bot only runs in allowed Discord servers",
     );
   }
 
@@ -73,16 +74,16 @@ export function parseAllowedGuildIds(
 
 export function parseOptionalDiscordIds(value: string | undefined, variableName: string): string[] {
   const ids = [...new Set((value?.split(",") ?? []).map((id) => id.trim()).filter(Boolean))];
-  const invalidId = ids.find((id) => !/^\d+$/.test(id));
+  const invalidId = ids.find((id) => !isDiscordSnowflake(id));
   if (invalidId) {
     throw new Error(`${variableName} contains an invalid Discord ID: ${invalidId}`);
   }
   return ids;
 }
 
-export function loadRuntimeConfig() {
-  const env = runtimeSchema.parse(process.env);
-  const discordAllowedGuildIds = parseAllowedGuildIds(
+export function loadRuntimeConfig(environment: NodeJS.ProcessEnv = process.env) {
+  const env = runtimeSchema.parse(environment);
+  const discordBootstrapGuildIds = parseAllowedGuildIds(
     env.DISCORD_ALLOWED_GUILD_IDS,
     normalizeGuildId(env.DISCORD_GUILD_ID),
   );
@@ -90,7 +91,9 @@ export function loadRuntimeConfig() {
   return {
     discordClientId: env.DISCORD_CLIENT_ID,
     discordToken: env.DISCORD_TOKEN,
-    discordAllowedGuildIds,
+    discordOwnerUserId: env.DISCORD_OWNER_USER_ID,
+    discordBootstrapGuildIds,
+    allowlistStorePath: env.ALLOWLIST_STORE_PATH,
     geminiApiKey: env.GEMINI_API_KEY,
     geminiModel: env.GEMINI_MODEL,
     searchTimeoutMs: env.SEARCH_TIMEOUT_MS,
@@ -115,27 +118,29 @@ export function loadRuntimeConfig() {
   };
 }
 
-export function loadRegistrationConfig() {
-  const env = sharedSchema.parse(process.env);
+export function loadRegistrationConfig(environment: NodeJS.ProcessEnv = process.env) {
+  const env = sharedSchema.parse(environment);
 
   return {
     discordClientId: env.DISCORD_CLIENT_ID,
     discordToken: env.DISCORD_TOKEN,
-    discordAllowedGuildIds: parseAllowedGuildIds(
+    discordBootstrapGuildIds: parseAllowedGuildIds(
       env.DISCORD_ALLOWED_GUILD_IDS,
       normalizeGuildId(env.DISCORD_GUILD_ID),
     ),
+    allowlistStorePath: env.ALLOWLIST_STORE_PATH,
   };
 }
 
-export function loadInviteConfig() {
-  const env = discordIdentitySchema.parse(process.env);
+export function loadInviteConfig(environment: NodeJS.ProcessEnv = process.env) {
+  const env = discordIdentitySchema.parse(environment);
 
   return {
     discordClientId: env.DISCORD_CLIENT_ID,
-    discordAllowedGuildIds: parseAllowedGuildIds(
+    discordBootstrapGuildIds: parseAllowedGuildIds(
       env.DISCORD_ALLOWED_GUILD_IDS,
       normalizeGuildId(env.DISCORD_GUILD_ID),
     ),
+    allowlistStorePath: env.ALLOWLIST_STORE_PATH,
   };
 }

@@ -61,6 +61,40 @@ export const commandBuilders = [
   new SlashCommandBuilder()
     .setName("reset")
     .setDescription("현재 채널의 내 후속 대화 문맥을 초기화합니다"),
+  new SlashCommandBuilder()
+    .setName("whitelist")
+    .setDescription("봇을 사용할 Discord 서버 화이트리스트를 관리합니다")
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName("add")
+        .setDescription("Discord 서버를 화이트리스트에 추가합니다")
+        .addStringOption((option) =>
+          option
+            .setName("guild-id")
+            .setDescription("추가할 Discord 서버 ID")
+            .setRequired(true)
+            .setMinLength(17)
+            .setMaxLength(20),
+        ),
+    )
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName("remove")
+        .setDescription("Discord 서버를 화이트리스트에서 제거합니다")
+        .addStringOption((option) =>
+          option
+            .setName("guild-id")
+            .setDescription("제거할 Discord 서버 ID")
+            .setRequired(true)
+            .setMinLength(17)
+            .setMaxLength(20),
+        ),
+    )
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName("list")
+        .setDescription("현재 Discord 서버 화이트리스트를 확인합니다"),
+    ),
   new SlashCommandBuilder().setName("ping").setDescription("봇의 연결 상태를 확인합니다"),
 ] as const;
 
