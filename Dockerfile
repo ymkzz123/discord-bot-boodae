@@ -18,7 +18,7 @@ RUN npm ci --omit=dev && npm cache clean --force
 
 COPY --from=build /app/dist ./dist
 
-RUN mkdir -p /app/.data && chown node:node /app/.data
+RUN mkdir -p /app/.data /data && chown node:node /app/.data /data
 
 USER node
 CMD ["node", "--enable-source-maps", "dist/index.js"]

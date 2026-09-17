@@ -2,12 +2,13 @@ import type { Client } from "discord.js";
 
 import type { KboAlertEvent, KboAlertNotifier } from "../kbo/kbo-alert-monitor.js";
 import type { Logger } from "../lib/logger.js";
+import type { GuildAllowlistReader } from "../state/guild-allowlist-store.js";
 
 export class DiscordKboAlertNotifier implements KboAlertNotifier {
   constructor(
     private readonly client: Client,
     public readonly channelIds: readonly string[],
-    private readonly allowedGuildIds: ReadonlySet<string>,
+    private readonly guildAllowlist: GuildAllowlistReader,
     private readonly roleName: string,
     private readonly logger: Logger,
   ) {}
@@ -17,7 +18,7 @@ export class DiscordKboAlertNotifier implements KboAlertNotifier {
     if (!channel || !channel.isTextBased() || channel.isDMBased() || !channel.isSendable()) {
       throw new Error(`KBO alert channel ${channelId} is not a sendable guild text channel`);
     }
-    if (!this.allowedGuildIds.has(channel.guildId)) {
+    if (!this.guildAllowlist.has(channel.guildId)) {
       throw new Error(`KBO alert channel ${channelId} belongs to a guild outside the allowlist`);
     }
 

@@ -1,21 +1,25 @@
-import { REST, Routes } from "discord.js";
-
-import { commandPayload } from "../src/bot/commands.js";
+import { DiscordGuildCommandSynchronizer } from "../src/bot/guild-command-synchronizer.js";
 import { loadRegistrationConfig } from "../src/config/env.js";
+import { FileGuildAllowlistStore } from "../src/state/guild-allowlist-store.js";
 
 const config = loadRegistrationConfig();
-const rest = new REST({ version: "10" }).setToken(config.discordToken);
-
-console.log(
-  `Registering commands in ${config.discordAllowedGuildIds.length} allowed guild(s)...`,
+const allowlist = await FileGuildAllowlistStore.open(
+  config.allowlistStorePath,
+  config.discordBootstrapGuildIds,
+);
+const guildIds = allowlist.list();
+const synchronizer = new DiscordGuildCommandSynchronizer(
+  config.discordClientId,
+  config.discordToken,
 );
 
-for (const guildId of config.discordAllowedGuildIds) {
-  await rest.put(
-    Routes.applicationGuildCommands(config.discordClientId, guildId),
-    { body: commandPayload },
-  );
+console.log(
+  `Registering commands in ${guildIds.length} allowed guild(s)...`,
+);
+
+for (const guildId of guildIds) {
+  await synchronizer.synchronize(guildId);
   console.log(`Registered commands in guild ${guildId}.`);
 }
 
-console.log(`Registered ${commandPayload.length} commands successfully.`);
+console.log("Registered guild commands successfully.");

@@ -6,6 +6,16 @@ import {
   type InteractionDependencies,
 } from "../src/bot/interaction-handler.js";
 
+function createAllowlist(...guildIds: string[]) {
+  const ids = new Set(guildIds);
+  return {
+    has: (guildId: string) => ids.has(guildId),
+    list: () => [...ids],
+    add: vi.fn(),
+    remove: vi.fn(),
+  };
+}
+
 describe("search interaction", () => {
   it("defers and sends the search result without the ephemeral flag", async () => {
     const deferReply = vi.fn().mockResolvedValue(undefined);
@@ -45,7 +55,7 @@ describe("search interaction", () => {
         error: vi.fn(),
       },
       maxResponseChars: 10_000,
-      allowedGuildIds: new Set(["guild-1", "guild-2"]),
+      guildAllowlist: createAllowlist("guild-1", "guild-2"),
     } as unknown as InteractionDependencies;
 
     await createInteractionHandler(dependencies)(interaction);
@@ -104,7 +114,7 @@ describe("search interaction", () => {
       rateLimiter: { consume: vi.fn().mockReturnValue({ allowed: true }) },
       logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
       maxResponseChars: 10_000,
-      allowedGuildIds: new Set(["guild-1", "guild-2"]),
+      guildAllowlist: createAllowlist("guild-1", "guild-2"),
     } as unknown as InteractionDependencies;
 
     await createInteractionHandler(dependencies)(interaction);
@@ -140,7 +150,7 @@ describe("search interaction", () => {
       rateLimiter: { consume: vi.fn() },
       logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
       maxResponseChars: 10_000,
-      allowedGuildIds: new Set(["guild-1", "guild-2"]),
+      guildAllowlist: createAllowlist("guild-1", "guild-2"),
     } as unknown as InteractionDependencies;
 
     await createInteractionHandler(dependencies)(interaction);
@@ -175,7 +185,7 @@ describe("search interaction", () => {
       rateLimiter: { consume: vi.fn() },
       logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
       maxResponseChars: 10_000,
-      allowedGuildIds: new Set(["guild-1", "guild-2"]),
+      guildAllowlist: createAllowlist("guild-1", "guild-2"),
     } as unknown as InteractionDependencies;
 
     await createInteractionHandler(dependencies)(interaction);
@@ -206,7 +216,7 @@ describe("search interaction", () => {
       rateLimiter: { consume: vi.fn() },
       logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
       maxResponseChars: 10_000,
-      allowedGuildIds: new Set(["guild-1"]),
+      guildAllowlist: createAllowlist("guild-1"),
     } as unknown as InteractionDependencies;
 
     await createInteractionHandler(dependencies)(interaction);

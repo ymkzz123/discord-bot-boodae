@@ -5,6 +5,7 @@ import {
 } from "discord.js";
 
 import { splitDiscordMessage, truncateWithNotice } from "../lib/discord-message.js";
+import { isDiscordSnowflake } from "../lib/discord-snowflake.js";
 import { serializeError, type Logger } from "../lib/logger.js";
 import { getKboFailureMessage } from "../kbo/kbo-error.js";
 import type { KboGuessPlayer } from "../kbo/guess-players.js";
@@ -15,6 +16,8 @@ import { getSearchFailureMessage } from "../search/search-error.js";
 import type { SearchService } from "../search/types.js";
 import type { FixedWindowRateLimiter } from "../security/rate-limiter.js";
 import type { ConversationStore } from "../state/conversation-store.js";
+import type { GuildAllowlistStore } from "../state/guild-allowlist-store.js";
+import type { GuildCommandSynchronizer } from "./guild-command-synchronizer.js";
 import { buildKboLineupEmbeds } from "./kbo-lineup-embeds.js";
 import {
   buildJungolProblemEmbed,
@@ -31,7 +34,9 @@ export interface InteractionDependencies {
   rateLimiter: FixedWindowRateLimiter;
   logger: Logger;
   maxResponseChars: number;
-  allowedGuildIds: ReadonlySet<string>;
+  ownerUserId: string;
+  guildAllowlist: GuildAllowlistStore;
+  commandSynchronizer: GuildCommandSynchronizer;
 }
 
 function consumeRequestLimit(
@@ -81,6 +86,146 @@ async function replyWithoutMentions(
     allowedMentions: { parse: [] },
     ...(ephemeral ? { flags: MessageFlags.Ephemeral } : {}),
   });
+}
+
+function safeGuildName(value: string): string {
+  return value.replace(/\s+/gu, " ").trim();
+}
+
+async function handleWhitelist(
+  interaction: ChatInputCommandInteraction,
+  dependencies: InteractionDependencies,
+): Promise<void> {
+  if (interaction.user.id !== dependencies.ownerUserId) {
+    await replyWithoutMentions(interaction, "이 명령을 사용할 권한이 없습니다.");
+    return;
+  }
+
+  const subcommand = interaction.options.getSubcommand(true);
+  if (subcommand === "list") {
+    const guildIds = dependencies.guildAllowlist.list();
+    const entries = guildIds.map((guildId) => {
+      const guildName = interaction.client.guilds.cache.get(guildId)?.name;
+      return guildName ? `• ${safeGuildName(guildName)} — ${guildId}` : `• ${guildId}`;
+    });
+    const content = guildIds.length === 0
+      ? "등록된 서버가 없습니다."
+      : `등록된 서버 (${guildIds.length}개)\n\n${entries.join("\n")}`;
+    await replyWithoutMentions(interaction, content);
+    return;
+  }
+
+  const guildId = interaction.options.getString("guild-id", true).trim();
+  if (!isDiscordSnowflake(guildId)) {
+    await replyWithoutMentions(
+      interaction,
+      "올바른 Discord 서버 ID를 입력해 주세요.",
+    );
+    return;
+  }
+
+  await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+  try {
+    if (subcommand === "add") {
+      const added = await dependencies.guildAllowlist.add(guildId);
+      if (!added) {
+        await interaction.editReply({
+          content: `서버 ${guildId}은(는) 이미 화이트리스트에 등록되어 있습니다.`,
+          allowedMentions: { parse: [] },
+        });
+        return;
+      }
+
+      const guild = interaction.client.guilds.cache.get(guildId);
+      if (guild) {
+        try {
+          await dependencies.commandSynchronizer.synchronize(guildId);
+        } catch (error) {
+          dependencies.logger.error("Whitelist guild command synchronization failed", {
+            guildId,
+            ...serializeError(error),
+          });
+          await interaction.editReply({
+            content: `서버 ${guildId}을(를) 화이트리스트에 추가했지만 슬래시 명령 동기화에 실패했습니다. 실행 로그를 확인해 주세요.`,
+            allowedMentions: { parse: [] },
+          });
+          return;
+        }
+      }
+
+      dependencies.logger.info("Guild added to allowlist", {
+        guildId,
+        botAlreadyPresent: Boolean(guild),
+      });
+      await interaction.editReply({
+        content: guild
+          ? `서버 ${guildId}을(를) 화이트리스트에 추가하고 슬래시 명령을 동기화했습니다.`
+          : `서버 ${guildId}을(를) 화이트리스트에 추가했습니다. 봇을 초대하면 명령이 자동으로 동기화됩니다.`,
+        allowedMentions: { parse: [] },
+      });
+      return;
+    }
+
+    if (subcommand === "remove") {
+      const removed = await dependencies.guildAllowlist.remove(guildId);
+      if (!removed) {
+        await interaction.editReply({
+          content: `서버 ${guildId}은(는) 현재 화이트리스트에 등록되어 있지 않습니다.`,
+          allowedMentions: { parse: [] },
+        });
+        return;
+      }
+
+      const guild = interaction.client.guilds.cache.get(guildId);
+      const apiFailures: string[] = [];
+      if (guild) {
+        try {
+          await dependencies.commandSynchronizer.clear(guildId);
+        } catch (error) {
+          apiFailures.push("슬래시 명령 삭제");
+          dependencies.logger.error("Removed guild command cleanup failed", {
+            guildId,
+            ...serializeError(error),
+          });
+        }
+
+        try {
+          await guild.leave();
+        } catch (error) {
+          apiFailures.push("서버 나가기");
+          dependencies.logger.error("Removed guild leave failed", {
+            guildId,
+            ...serializeError(error),
+          });
+        }
+      }
+
+      dependencies.logger.info("Guild removed from allowlist", {
+        guildId,
+        botWasPresent: Boolean(guild),
+        apiFailures,
+      });
+      await interaction.editReply({
+        content: apiFailures.length > 0
+          ? `서버 ${guildId}을(를) 화이트리스트에서 제거했습니다. ${apiFailures.join(", ")} 작업은 실패했으므로 실행 로그를 확인해 주세요.`
+          : guild
+            ? `서버 ${guildId}을(를) 화이트리스트에서 제거하고 봇이 서버를 나갔습니다.`
+            : `서버 ${guildId}을(를) 화이트리스트에서 제거했습니다.`,
+        allowedMentions: { parse: [] },
+      });
+    }
+  } catch (error) {
+    dependencies.logger.error("Whitelist persistence failed", {
+      subcommand,
+      guildId,
+      ...serializeError(error),
+    });
+    await interaction.editReply({
+      content: "화이트리스트를 저장하지 못했습니다. 변경 사항은 적용되지 않았습니다.",
+      allowedMentions: { parse: [] },
+    });
+  }
 }
 
 async function handleSearch(
@@ -247,7 +392,12 @@ export function createInteractionHandler(dependencies: InteractionDependencies) 
   return async (interaction: Interaction): Promise<void> => {
     if (!interaction.isChatInputCommand()) return;
 
-    if (!interaction.guildId || !dependencies.allowedGuildIds.has(interaction.guildId)) {
+    if (interaction.commandName === "whitelist") {
+      await handleWhitelist(interaction, dependencies);
+      return;
+    }
+
+    if (!interaction.guildId || !dependencies.guildAllowlist.has(interaction.guildId)) {
       dependencies.logger.warn("Blocked interaction outside the allowed guild", {
         userId: interaction.user.id,
         guildId: interaction.guildId,

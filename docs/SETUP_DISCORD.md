@@ -52,7 +52,9 @@ cp .env.example .env
 ```dotenv
 DISCORD_CLIENT_ID=숫자로_된_Application_ID
 DISCORD_TOKEN=발급받은_봇_토큰
+DISCORD_OWNER_USER_ID=내_Discord_사용자_ID
 DISCORD_ALLOWED_GUILD_IDS=첫번째_서버_ID,두번째_서버_ID
+ALLOWLIST_STORE_PATH=.data/guild-allowlist.json
 GEMINI_API_KEY=Google_AI_Studio에서_발급한_키
 GEMINI_MODEL=gemini-3.1-flash-lite
 ```
@@ -79,7 +81,7 @@ Discord 승인 화면에서 권한을 확인하고 **승인**합니다. 설치�
 - 전달받은 사람에게 대상 서버의 **서버 관리** 권한 필요
 - URL의 서버 선택은 고정되어 다른 서버로 바꿀 수 없음
 
-누군가 URL의 값을 수정해 다른 서버에 설치하더라도 봇은 `DISCORD_ALLOWED_GUILD_IDS` 밖 서버에서 명령을 거부하고 즉시 그 서버를 나갑니다. 따라서 포털의 설치 권한과 코드의 서버 화이트리스트를 함께 사용합니다.
+누군가 URL의 값을 수정해 다른 서버에 설치하더라도 봇은 영속 화이트리스트 밖 서버에서 명령을 거부하고 즉시 그 서버를 나갑니다. 따라서 포털의 설치 권한과 코드의 서버 화이트리스트를 함께 사용합니다.
 
 ## 7. 슬래시 명령 등록과 실행
 
@@ -98,12 +100,13 @@ npm run dev
 /tag query:mst
 /user handle:goodaiden
 /kboplayer
+/whitelist list
 /reset
 ```
 
 `/search` 결과는 채널에 공개됩니다. 명령 정의가 Discord에 반영되도록 코드를 업데이트한 뒤 `npm run commands:register`를 다시 실행하세요.
 
-`DISCORD_ALLOWED_GUILD_IDS`에 적힌 모든 서버에 명령이 바로 등록됩니다. 허용 서버 목록은 비워 둘 수 없습니다.
+첫 실행에서는 `DISCORD_ALLOWED_GUILD_IDS`에 적힌 서버가 영속 JSON 파일로 이관됩니다. 이후에는 owner가 `/whitelist add`, `/whitelist remove`, `/whitelist list`로 관리하며 환경 변수는 기존 저장 파일을 덮어쓰지 않습니다.
 
 ## 8. KBO 자동 알림 설정
 
@@ -145,7 +148,8 @@ docker compose logs -f bot
 
 - `npm run dev`가 계속 실행 중인지 확인합니다.
 - 로그에 `Discord bot is ready`가 있는지 확인합니다.
-- `DISCORD_TOKEN`이 최근 재발급된 토큰과 같은지 확인합니다.
+- `Discord login failed`가 있으면 `DISCORD_TOKEN`이 Developer Portal의 현재 token과 같은지 확인합니다.
+- 한 환경에서는 bot process를 하나만 실행합니다.
 
 ### `Used disallowed intents` 오류
 
@@ -153,7 +157,9 @@ docker compose logs -f bot
 
 ### `401` 또는 `Invalid Token`
 
-`.env`의 `DISCORD_TOKEN` 앞뒤 공백과 토큰 재발급 여부를 확인합니다. 토큰을 로그에 출력하지 마세요.
+`.env`의 `DISCORD_TOKEN` 앞뒤 공백을 확인합니다. 이미 설정된 PowerShell/Codespaces 환경 변수나 secret은 `.env`보다 우선할 수 있으므로 오래된 값이 남아 있는지도 확인하세요. 정상 token은 앱을 다시 실행할 때 재발급할 필요가 없으며, 노출되었거나 Developer Portal에서 직접 reset한 경우에만 교체합니다. 토큰을 로그에 출력하지 마세요.
+
+`Discord bot is ready` 뒤에 `/search`만 실패한다면 Discord token 문제는 아닙니다. 아래 Gemini 또는 검색 설정을 점검하세요.
 
 ### Gemini 또는 웹 검색 오류
 

@@ -34,4 +34,24 @@ describe("search command", () => {
     const command = commandPayload.find((item) => item.name === "kboplayer");
     expect(command?.options ?? []).toEqual([]);
   });
+
+  it("registers owner whitelist add, remove, and list subcommands", () => {
+    const command = commandPayload.find((item) => item.name === "whitelist");
+    const subcommands = command?.options as Array<{
+      name: string;
+      options?: Array<{ name: string }>;
+    }> | undefined;
+
+    expect(subcommands?.map((option) => option.name)).toEqual([
+      "add",
+      "remove",
+      "list",
+    ]);
+    expect(subcommands?.[0]?.options?.map((option) => option.name)).toEqual([
+      "guild-id",
+    ]);
+    expect(subcommands?.[1]?.options?.map((option) => option.name)).toEqual([
+      "guild-id",
+    ]);
+  });
 });

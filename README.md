@@ -15,6 +15,7 @@ Discord 안에서 최신 웹 정보를 검색하고 사람이 직접 정리한 �
 - `/tag query:<태그>`: 정올 태그별 문제 검색
 - `/user handle:<이름>`: 정올 공개 유저 검색
 - `/kboplayer`: KBO 선수 맞히기용 선수 이름·대표팀을 명령 사용자에게만 표시
+- `/whitelist add|remove|list`: 지정된 봇 소유자만 서버 화이트리스트를 즉시 관리
 - 선택한 채널에 KBO 플레이볼 및 김서현 등판 `44 ALERT` 역할 멘션
 - `/reset`: 현재 사용자·채널의 30분 후속 대화 문맥 초기화
 - `/ping`: Gateway 연결 상태 확인
@@ -90,7 +91,9 @@ Discord Developer Portal에서 앱을 만들고 특정 서버에 설치하는 �
 |---|---:|---|---|
 | `DISCORD_CLIENT_ID` | 예 | - | Discord Application ID |
 | `DISCORD_TOKEN` | 예 | - | Discord Bot Token |
-| `DISCORD_ALLOWED_GUILD_IDS` | 예 | - | 봇 사용을 허용할 서버 ID 목록. 쉼표로 구분 |
+| `DISCORD_OWNER_USER_ID` | 예 | - | `/whitelist`를 실행할 수 있는 유일한 Discord 사용자 ID |
+| `DISCORD_ALLOWED_GUILD_IDS` | 최초 실행 | - | 영속 파일을 처음 만들 때 이관할 서버 ID 목록. 쉼표로 구분 |
+| `ALLOWLIST_STORE_PATH` | 아니요 | `.data/guild-allowlist.json` | 동적 서버 화이트리스트 JSON 경로 |
 | `DISCORD_GUILD_ID` | 아니요 | 빈 값 | 이전 단일 서버 설정과의 호환용 ID |
 | `GEMINI_API_KEY` | 예 | - | Google AI Studio에서 발급한 Gemini API 키 |
 | `GEMINI_MODEL` | 아니요 | `gemini-3.1-flash-lite` | 검색 결과를 요약할 모델 |
@@ -114,17 +117,51 @@ Discord Developer Portal에서 앱을 만들고 특정 서버에 설치하는 �
 
 ## 화이트리스트 봇과 설치 범위
 
-- `DISCORD_ALLOWED_GUILD_IDS`에 쉼표로 나열한 서버에만 명령을 등록하고 봇 기능을 허용합니다.
-- 허용 서버가 하나도 없으면 실수로 공개 범위에서 실행되지 않도록 봇 시작이 중단됩니다.
+- `ALLOWLIST_STORE_PATH`의 JSON 목록에 등록된 서버에만 명령을 등록하고 봇 기능을 허용합니다.
+- 저장 파일이 처음 만들어질 때 기존 `DISCORD_ALLOWED_GUILD_IDS` 값을 안전하게 이관합니다. 파일이 이미 있으면 환경 변수로 저장 내용을 덮어쓰지 않습니다.
+- 저장 파일이 손상되거나 읽을 수 없으면 봇은 fail-closed 방식으로 시작을 중단합니다.
 - 다른 서버에 설치되더라도 봇은 시작 시점 또는 서버 추가 이벤트에서 즉시 그 서버를 나갑니다.
 - 허용 서버의 다른 관리자도 설치할 수 있게 Developer Portal의 **Bot → Public Bot**을 켜고, `npm run invite:url`로 생성한 서버 고정 링크를 전달합니다.
 - `Public Bot`이 켜져 있어도 화이트리스트 밖 서버에서는 기능이 차단되고 봇이 즉시 나갑니다.
+- `/whitelist add guild-id:<서버 ID>`는 저장 즉시 허용하며, 봇이 이미 서버에 있으면 slash commands를 동기화합니다.
+- `/whitelist remove guild-id:<서버 ID>`는 저장소에서 먼저 제거하고, 명령을 지운 뒤 해당 서버를 나갑니다.
+- `/whitelist list`는 현재 목록과 캐시에 있는 서버 이름을 표시합니다.
+- 세 명령은 `DISCORD_OWNER_USER_ID`와 정확히 일치하는 사용자만 실행할 수 있고 모든 응답은 ephemeral입니다.
 
 명령 정의를 바꾼 뒤에는 `npm run commands:register`를 다시 실행해야 합니다.
 
 ```env
 DISCORD_ALLOWED_GUILD_IDS=111111111111111111,222222222222222222
+DISCORD_OWNER_USER_ID=333333333333333333
+ALLOWLIST_STORE_PATH=.data/guild-allowlist.json
 ```
+
+마지막 허용 서버까지 제거하면 봇이 관리 명령을 실행할 서버에서도 나가게 됩니다. 복구하려면 봇을 중지하고 저장 파일을 백업한 뒤 삭제한 다음 `DISCORD_ALLOWED_GUILD_IDS`에 복구할 서버를 넣어 다시 시작하세요.
+
+## Railway 배포 설정
+
+Railway Variables에는 최소한 다음 값을 유지합니다.
+
+```env
+DISCORD_CLIENT_ID=<application id>
+DISCORD_TOKEN=<secret>
+DISCORD_OWNER_USER_ID=<owner user id>
+DISCORD_ALLOWED_GUILD_IDS=<first bootstrap guild ids>
+ALLOWLIST_STORE_PATH=/data/guild-allowlist.json
+GEMINI_API_KEY=<secret>
+```
+
+Railway 서비스에 persistent Volume을 추가하고 mount path를 다음과 같이 설정합니다.
+
+```text
+/data
+```
+
+`DISCORD_TOKEN`은 Discord Developer Portal에서 정상적으로 발급한 값을 Railway Variables에 한 번 저장한 뒤 재시작과 일반 배포에서 그대로 사용합니다. 코드에는 token 생성·reset·rotation 기능이 없습니다. 노출되었거나 Developer Portal에서 직접 **Reset Token**을 누른 경우에만 새 값을 발급하고 Railway Variable도 함께 바꿔야 합니다.
+
+Railway replica는 하나만 실행하세요. 여러 bot process가 동시에 같은 token으로 접속해도 token 자체가 폐기되지는 않지만, 이벤트 중복 처리와 응답 혼선을 만들 수 있습니다.
+
+로컬 `.env`는 저장소 루트에서 실행한 `npm run dev`가 읽습니다. 이미 설정된 shell/Codespaces 환경 변수나 secret은 `.env`보다 우선하므로, 오래된 `DISCORD_TOKEN`이 남아 있다면 해당 환경 변수 또는 secret을 수정해야 합니다. 로그에 `Discord bot is ready`가 출력된 뒤 `/search`만 실패하는 경우 Discord 인증은 이미 성공한 것이므로 `GEMINI_API_KEY`, `GEMINI_MODEL`, Gemini 한도 또는 검색 공급자 로그를 확인하세요. 로그인 실패는 `Discord login failed`, 검색 기능 실패는 `Search failed`로 구분해 기록합니다.
 
 `/search` 답변은 기본적으로 채널에 공개되므로 같은 채널의 다른 사용자도 답변을 볼 수 있습니다. 검색에 사용한 URL과 출처 목록은 메시지에 표시하지 않습니다.
 `/lineup`은 모바일에서도 원정팀과 홈팀 타순이 세로로 읽히도록 경기별 Discord 임베드 카드로 표시합니다. 취소 경기는 선발 정보 없이 취소 안내만 표시합니다.
